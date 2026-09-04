@@ -514,7 +514,14 @@ function App() {
   const [otpSent, setOtpSent] = useState(false);
 
   const [adminPassword, setAdminPassword] = useState("");
-
+const [officerCentre, setOfficerCentre] = useState(() => {
+  try {
+    const saved = localStorage.getItem("kisanSetuOfficerCentre");
+    return saved ? JSON.parse(saved) : null;
+  } catch {
+    return null;
+  }
+});
   /* =========================================
      BUYER FORM
   ========================================= */
@@ -530,7 +537,6 @@ function App() {
 
   const governmentRate = 2585;
   const marketRate = 2700;
-
   /* =========================================
      AUTH FUNCTIONS
   ========================================= */
@@ -565,27 +571,91 @@ function App() {
     alert(t("Demo OTP: 123456"));
   };
 
-  const verifyLoginOtp = () => {
+  const verifyLoginOtp = async () => {
     if (loginOtp !== "123456") {
       alert(t("Invalid OTP. Use Demo OTP: 123456"));
       return;
     }
 
-    setLoggedInRole(loginRole);
+    try {
+      // Farmer / Buyer login
+      if (loginRole !== "officer") {
+        setLoggedInRole(loginRole);
 
-    if (loginRole === "farmer") {
-      setScreen("home");
-    } else if (loginRole === "officer") {
+        if (loginRole === "farmer") {
+          setScreen("home");
+        } else if (loginRole === "buyer") {
+          setScreen("buyer");
+        }
+
+        return;
+      }
+
+      // Officer login → fetch assigned centre
+      const { data: officer, error } = await supabase
+        .from("profiles")
+        .select(`
+          id,
+          name,
+          login_id,
+          centre_id,
+          procurement_centres (
+            id,
+            name
+          )
+        `)
+        .eq("login_id", loginId.trim())
+        .eq("role", "officer")
+        .single();
+
+      if (error || !officer) {
+        console.error("Officer login error:", error);
+        alert("Officer ID nahi mila. Please check your Officer ID.");
+        return;
+      }
+
+      if (!officer.centre_id || !officer.procurement_centres) {
+        alert(
+          "Is officer ke saath koi procurement centre assigned nahi hai."
+        );
+        return;
+      }
+
+      // Save logged-in officer + assigned centre
+      setLoggedInRole("officer");
       setScreen("officer");
-    } else if (loginRole === "buyer") {
-      setScreen("buyer");
+
+      // Store officer centre information in React state
+      setOfficerCentre({
+        officerId: officer.id,
+        loginId: officer.login_id,
+        centreId: officer.centre_id,
+        centreName: officer.procurement_centres.name,
+      });
+
+      // Store officer centre information in localStorage
+      localStorage.setItem(
+        "kisanSetuOfficerCentre",
+        JSON.stringify({
+          officerId: officer.id,
+          loginId: officer.login_id,
+          centreId: officer.centre_id,
+          centreName: officer.procurement_centres.name,
+        })
+      );
+
+    } catch (error) {
+      console.error("Unexpected officer login error:", error);
+      alert("Officer login ke time kuch problem aa gayi.");
     }
   };
 
   const adminLogin = () => {
     if (loginId !== "ADMIN001" || adminPassword !== "admin123") {
       alert(
-        t("Invalid Admin ID or password.\\n\\nDemo:\\nID: ADMIN001\\nPassword: admin123")
+        t(
+          "Invalid Admin ID or password.\n\nDemo:\nID: ADMIN001\nPassword: admin123"
+        )
       );
       return;
     }
@@ -600,7 +670,6 @@ function App() {
     resetLoginFields();
     setScreen("roles");
   };
-
   /* =========================================
      FARMER FUNCTIONS
   ========================================= */
@@ -2020,7 +2089,6 @@ const updateTokenStatus = async (tokenId) => {
 
         </main>
       )}
-
       {/* =========================================
           PROCUREMENT OFFICER
       ========================================= */}
@@ -2044,6 +2112,14 @@ const updateTokenStatus = async (tokenId) => {
                 {t("Manage procurement centre token queue.")}
               </p>
 
+              {officerCentre && (
+                <p>
+                  <strong>
+                    {officerCentre.centreName}
+                  </strong>
+                </p>
+              )}
+
             </div>
 
             <span className="live-badge">
@@ -2051,6 +2127,11 @@ const updateTokenStatus = async (tokenId) => {
             </span>
 
           </div>
+
+
+          {/* =========================================
+              CENTRE-SPECIFIC TOKENS
+          ========================================= */}
 
           <div className="dashboard-stats">
 
@@ -2063,12 +2144,15 @@ const updateTokenStatus = async (tokenId) => {
               <strong>
                 {
                   tokens.filter(
-                    (t) => t.status === "Waiting"
+                    (token) =>
+                      token.centre === officerCentre?.centreName &&
+                      token.status === "Waiting"
                   ).length
                 }
               </strong>
 
             </div>
+
 
             <div className="stat-card">
 
@@ -2079,12 +2163,15 @@ const updateTokenStatus = async (tokenId) => {
               <strong>
                 {
                   tokens.filter(
-                    (t) => t.status === "Processing"
+                    (token) =>
+                      token.centre === officerCentre?.centreName &&
+                      token.status === "Processing"
                   ).length
                 }
               </strong>
 
             </div>
+
 
             <div className="stat-card">
 
@@ -2095,12 +2182,15 @@ const updateTokenStatus = async (tokenId) => {
               <strong>
                 {
                   tokens.filter(
-                    (t) => t.status === "Completed"
+                    (token) =>
+                      token.centre === officerCentre?.centreName &&
+                      token.status === "Completed"
                   ).length
                 }
               </strong>
 
             </div>
+
 
             <div className="stat-card">
 
@@ -2116,6 +2206,11 @@ const updateTokenStatus = async (tokenId) => {
 
           </div>
 
+
+          {/* =========================================
+              TOKEN QUEUE
+          ========================================= */}
+
           <div className="dashboard-card">
 
             <div className="section-header">
@@ -2127,10 +2222,12 @@ const updateTokenStatus = async (tokenId) => {
                 </h2>
 
                 <p>
-                  Rajajipuram Procurement Centre
+                  {officerCentre?.centreName ||
+                    "Procurement Centre"}
                 </p>
 
               </div>
+
 
               <button
                 className="small-button"
@@ -2142,6 +2239,7 @@ const updateTokenStatus = async (tokenId) => {
               </button>
 
             </div>
+
 
             <div className="table-wrapper">
 
@@ -2160,56 +2258,97 @@ const updateTokenStatus = async (tokenId) => {
 
                 </thead>
 
+
                 <tbody>
 
-                  {tokens.map((token) => (
-                    <tr key={token.id}>
+                  {tokens
+                    .filter(
+                      (token) =>
+                        token.centre ===
+                        officerCentre?.centreName
+                    )
+                    .map((token) => (
 
-                      <td>
-                        <strong>
-                          {token.id}
-                        </strong>
-                      </td>
+                      <tr key={token.id}>
 
-                      <td>
-                        {token.farmer}
-                      </td>
+                        <td>
+                          <strong>
+                            {token.id}
+                          </strong>
+                        </td>
 
-                      <td>
-                        {token.crop}
-                      </td>
 
-                      <td>
-                        {token.quantity} q
-                      </td>
+                        <td>
+                          {token.farmer}
+                        </td>
 
-                      <td>
 
-                        <span
-                          className={`table-status ${token.status.toLowerCase()}`}
-                        >
-                          {t(token.status)}
-                        </span>
+                        <td>
+                          {token.crop}
+                        </td>
 
-                      </td>
 
-                      <td>
+                        <td>
+                          {token.quantity} q
+                        </td>
 
-                        {token.status !== "Completed" && (
-                          <button
-                            className="action-button"
-                            onClick={() =>
-                              updateTokenStatus(token.id)
-                            }
+
+                        <td>
+
+                          <span
+                            className={`table-status ${token.status.toLowerCase()}`}
                           >
-                            {t(getNextOfficerAction(token.status))}
-                          </button>
-                        )}
+                            {t(token.status)}
+                          </span>
 
+                        </td>
+
+
+                        <td>
+
+                          {token.status !== "Completed" && (
+                            <button
+                              className="action-button"
+                              onClick={() =>
+                                updateTokenStatus(token.id)
+                              }
+                            >
+                              {t(
+                                getNextOfficerAction(
+                                  token.status
+                                )
+                              )}
+                            </button>
+                          )}
+
+                        </td>
+
+                      </tr>
+
+                    ))}
+
+
+                  {tokens.filter(
+                    (token) =>
+                      token.centre ===
+                      officerCentre?.centreName
+                  ).length === 0 && (
+
+                    <tr>
+
+                      <td
+                        colSpan="6"
+                        style={{
+                          textAlign: "center",
+                          padding: "30px"
+                        }}
+                      >
+                        {t("No tokens available for this centre.")}
                       </td>
 
                     </tr>
-                  ))}
+
+                  )}
 
                 </tbody>
 
@@ -2219,23 +2358,32 @@ const updateTokenStatus = async (tokenId) => {
 
           </div>
 
+
+          {/* =========================================
+              CENTRE OPERATIONS
+          ========================================= */}
+
           <div className="dashboard-card">
 
             <div className="section-header">
 
               <div>
+
                 <h2>
                   {t("📊 Centre Operations")}
                 </h2>
+
               </div>
 
             </div>
+
 
             <div className="progress-list">
 
               <div className="progress-item">
 
                 <div>
+
                   <span>
                     {t("Daily Capacity")}
                   </span>
@@ -2243,17 +2391,27 @@ const updateTokenStatus = async (tokenId) => {
                   <strong>
                     72%
                   </strong>
+
                 </div>
 
+
                 <div className="progress">
-                  <div style={{ width: "72%" }}></div>
+
+                  <div
+                    style={{
+                      width: "72%"
+                    }}
+                  ></div>
+
                 </div>
 
               </div>
 
+
               <div className="progress-item">
 
                 <div>
+
                   <span>
                     {t("Queue Load")}
                   </span>
@@ -2261,10 +2419,18 @@ const updateTokenStatus = async (tokenId) => {
                   <strong>
                     38%
                   </strong>
+
                 </div>
 
+
                 <div className="progress">
-                  <div style={{ width: "38%" }}></div>
+
+                  <div
+                    style={{
+                      width: "38%"
+                    }}
+                  ></div>
+
                 </div>
 
               </div>
@@ -2275,7 +2441,358 @@ const updateTokenStatus = async (tokenId) => {
 
         </main>
       )}
+           {/* =========================================
+          PROCUREMENT OFFICER
+      ========================================= */}
 
+      {screen === "officer" && loggedInRole === "officer" && (
+        <main className="container dashboard">
+
+          <div className="dashboard-heading">
+
+            <div>
+
+              <div className="eyebrow">
+                {t("PROCUREMENT MANAGEMENT")}
+              </div>
+
+              <h1>
+                {t("Officer Dashboard")}
+              </h1>
+
+              <p>
+                {t("Manage procurement centre token queue.")}
+              </p>
+
+              {officerCentre && (
+                <p>
+                  <strong>
+                    {officerCentre.centreName}
+                  </strong>
+                </p>
+              )}
+
+            </div>
+
+            <span className="live-badge">
+              {t("● LIVE")}
+            </span>
+
+          </div>
+
+
+          {/* =========================================
+              CENTRE-SPECIFIC TOKENS
+          ========================================= */}
+
+          <div className="dashboard-stats">
+
+            <div className="stat-card">
+
+              <span>
+                {t("Waiting")}
+              </span>
+
+              <strong>
+                {
+                  tokens.filter(
+                    (token) =>
+                      token.centre === officerCentre?.centreName &&
+                      token.status === "Waiting"
+                  ).length
+                }
+              </strong>
+
+            </div>
+
+
+            <div className="stat-card">
+
+              <span>
+                {t("Processing")}
+              </span>
+
+              <strong>
+                {
+                  tokens.filter(
+                    (token) =>
+                      token.centre === officerCentre?.centreName &&
+                      token.status === "Processing"
+                  ).length
+                }
+              </strong>
+
+            </div>
+
+
+            <div className="stat-card">
+
+              <span>
+                {t("Completed")}
+              </span>
+
+              <strong>
+                {
+                  tokens.filter(
+                    (token) =>
+                      token.centre === officerCentre?.centreName &&
+                      token.status === "Completed"
+                  ).length
+                }
+              </strong>
+
+            </div>
+
+
+            <div className="stat-card">
+
+              <span>
+                {t("Centre Capacity")}
+              </span>
+
+              <strong>
+                72%
+              </strong>
+
+            </div>
+
+          </div>
+
+
+          {/* =========================================
+              TOKEN QUEUE
+          ========================================= */}
+
+          <div className="dashboard-card">
+
+            <div className="section-header">
+
+              <div>
+
+                <h2>
+                  {t("🎫 Token Queue")}
+                </h2>
+
+                <p>
+                  {officerCentre?.centreName ||
+                    "Procurement Centre"}
+                </p>
+
+              </div>
+
+
+              <button
+                className="small-button"
+                onClick={() =>
+                  alert(t("Queue refreshed"))
+                }
+              >
+                {t("Refresh")}
+              </button>
+
+            </div>
+
+
+            <div className="table-wrapper">
+
+              <table>
+
+                <thead>
+
+                  <tr>
+                    <th>{t("Token")}</th>
+                    <th>{t("Farmer")}</th>
+                    <th>{t("Crop")}</th>
+                    <th>{t("Quantity")}</th>
+                    <th>{t("Status")}</th>
+                    <th>{t("Action")}</th>
+                  </tr>
+
+                </thead>
+
+
+                <tbody>
+
+                  {tokens
+                    .filter(
+                      (token) =>
+                        token.centre ===
+                        officerCentre?.centreName
+                    )
+                    .map((token) => (
+
+                      <tr key={token.id}>
+
+                        <td>
+                          <strong>
+                            {token.id}
+                          </strong>
+                        </td>
+
+
+                        <td>
+                          {token.farmer}
+                        </td>
+
+
+                        <td>
+                          {token.crop}
+                        </td>
+
+
+                        <td>
+                          {token.quantity} q
+                        </td>
+
+
+                        <td>
+
+                          <span
+                            className={`table-status ${token.status.toLowerCase()}`}
+                          >
+                            {t(token.status)}
+                          </span>
+
+                        </td>
+
+
+                        <td>
+
+                          {token.status !== "Completed" && (
+                            <button
+                              className="action-button"
+                              onClick={() =>
+                                updateTokenStatus(token.id)
+                              }
+                            >
+                              {t(
+                                getNextOfficerAction(
+                                  token.status
+                                )
+                              )}
+                            </button>
+                          )}
+
+                        </td>
+
+                      </tr>
+
+                    ))}
+
+
+                  {tokens.filter(
+                    (token) =>
+                      token.centre ===
+                      officerCentre?.centreName
+                  ).length === 0 && (
+
+                    <tr>
+
+                      <td
+                        colSpan="6"
+                        style={{
+                          textAlign: "center",
+                          padding: "30px"
+                        }}
+                      >
+                        {t("No tokens available for this centre.")}
+                      </td>
+
+                    </tr>
+
+                  )}
+
+                </tbody>
+
+              </table>
+
+            </div>
+
+          </div>
+
+
+          {/* =========================================
+              CENTRE OPERATIONS
+          ========================================= */}
+
+          <div className="dashboard-card">
+
+            <div className="section-header">
+
+              <div>
+
+                <h2>
+                  {t("📊 Centre Operations")}
+                </h2>
+
+              </div>
+
+            </div>
+
+
+            <div className="progress-list">
+
+              <div className="progress-item">
+
+                <div>
+
+                  <span>
+                    {t("Daily Capacity")}
+                  </span>
+
+                  <strong>
+                    72%
+                  </strong>
+
+                </div>
+
+
+                <div className="progress">
+
+                  <div
+                    style={{
+                      width: "72%"
+                    }}
+                  ></div>
+
+                </div>
+
+              </div>
+
+
+              <div className="progress-item">
+
+                <div>
+
+                  <span>
+                    {t("Queue Load")}
+                  </span>
+
+                  <strong>
+                    38%
+                  </strong>
+
+                </div>
+
+
+                <div className="progress">
+
+                  <div
+                    style={{
+                      width: "38%"
+                    }}
+                  ></div>
+
+                </div>
+
+              </div>
+
+            </div>
+
+          </div>
+
+        </main>
+      )}
       {/* =========================================
           BUYER DASHBOARD
       ========================================= */}
