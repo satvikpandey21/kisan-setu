@@ -501,6 +501,69 @@ function App() {
     loadTokenHistory();
   }, []);
 
+  // =========================================
+  // LOAD TOKENS FROM SUPABASE
+  // =========================================
+
+  useEffect(() => {
+    const loadTokensFromSupabase = async () => {
+      try {
+        const { data, error } = await supabase
+          .from("tokens")
+          .select(`
+            id,
+            token_id,
+            farmer,
+            crop,
+            quantity,
+            centre_id,
+            centre,
+            status,
+            created_at,
+            updated_at
+          `)
+          .order("created_at", { ascending: true });
+
+        if (error) {
+          console.error("Token fetch error:", error);
+          return;
+        }
+
+        const backendTokens = (data || []).map((token) => ({
+          id: token.token_id,
+          farmer: token.farmer,
+          crop: token.crop,
+          quantity: token.quantity,
+          centre: token.centre,
+          status: token.status,
+          createdAt: token.created_at,
+          updatedAt: token.updated_at,
+          history: [],
+        }));
+
+        setTokens((prev) => {
+          // Keep locally available tokens if they are not yet in Supabase
+          const backendIds = new Set(
+            backendTokens.map((token) => token.id)
+          );
+
+          const localOnlyTokens = prev.filter(
+            (token) => !backendIds.has(token.id)
+          );
+
+          return [...backendTokens, ...localOnlyTokens];
+        });
+
+      } catch (error) {
+        console.error(
+          "Unexpected token fetch error:",
+          error
+        );
+      }
+    };
+
+    loadTokensFromSupabase();
+  }, []);
   /* =========================================
      AUTH STATE
   ========================================= */
