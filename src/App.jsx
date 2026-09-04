@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import "./App.css";
 import "./language-toggle.css";
-
+import { supabase } from "./supabaseClient";
+console.log("Supabase connected:", supabase);
 /* =========================================
    CROP DATA
 ========================================= */
@@ -382,6 +383,123 @@ function App() {
       window.removeEventListener("storage", handleStorage);
     };
   }, []);
+    useEffect(() => {
+    const channel = supabase
+      .channel("kisan-setu-token-updates")
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "tokens",
+        },
+        (payload) => {
+          console.log("Realtime token update:", payload);
+
+          const updatedToken = payload.new;
+
+          setTokens((prev) =>
+            prev.map((token) => {
+              if (token.id !== updatedToken.token_id) {
+                return token;
+              }
+
+              return {
+                ...token,
+                status: updatedToken.status,
+                updatedAt: updatedToken.updated_at,
+              };
+            })
+          );
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "token_history",
+        },
+        (payload) => {
+          console.log("Realtime history update:", payload);
+
+          const newHistory = payload.new;
+
+          setTokens((prev) =>
+            prev.map((token) => {
+              if (!token.history) {
+                return token;
+              }
+
+              return token;
+            })
+          );
+        }
+      )
+      .subscribe((status) => {
+        console.log("Realtime subscription:", status);
+      });
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  useEffect(() => {
+    const loadTokenHistory = async () => {
+      if (!tokens.length) return;
+
+      try {
+        const { data, error } = await supabase
+          .from("token_history")
+          .select(`
+            id,
+            token_id,
+            status,
+            event_time,
+            tokens (
+              token_id
+            )
+          `)
+          .order("event_time", { ascending: true });
+
+        if (error) {
+          console.error("Token history fetch error:", error);
+          return;
+        }
+
+        setTokens((prev) =>
+          prev.map((token) => {
+            const history = (data || [])
+              .filter(
+                (item) =>
+                  item.tokens?.token_id === token.id
+              )
+              .map((item) => ({
+                status: item.status,
+                time: item.event_time,
+              }));
+
+            if (!history.length) {
+              return token;
+            }
+
+            return {
+              ...token,
+              history,
+            };
+          })
+        );
+      } catch (error) {
+        console.error(
+          "Unexpected history fetch error:",
+          error
+        );
+      }
+    };
+
+    loadTokenHistory();
+  }, []);
 
   /* =========================================
      AUTH STATE
@@ -504,26 +622,89 @@ function App() {
   const selectGovernment = () => {
     setScreen("centres");
   };
+const generateToken = async (centre) => {
+  setSelectedCentre(centre);
 
-  const generateToken = (centre) => {
-    setSelectedCentre(centre);
-
+  try {
     const now = new Date().toISOString();
+
+    const tokenNumber = `KIS-${String(45 + tokens.length).padStart(3, "0")}`;
+
+    const { data: centreData, error: centreError } = await supabase
+      .from("procurement_centres")
+      .select("id, name")
+      .eq("name", centre.name)
+      .single();
+
+    if (centreError) {
+      console.error("Centre fetch error:", centreError);
+      alert("Procurement centre database se connect nahi ho pa raha.");
+      return;
+    }
+
+    const { data: newTokenData, error: tokenError } = await supabase
+      .from("tokens")
+      .insert([
+        {
+          token_id: tokenNumber,
+          farmer: loginId || "Demo Farmer",
+          crop,
+          quantity: Number(quantity),
+          centre_id: centreData.id,
+          centre: centreData.name,
+          status: "Waiting",
+          created_at: now,
+          updated_at: now,
+        },
+      ])
+      .select()
+      .single();
+
+    if (tokenError) {
+      console.error("Token insert error:", tokenError);
+      alert("Token save nahi ho paya. Please try again.");
+      return;
+    }
+
+    const { error: historyError } = await supabase
+      .from("token_history")
+      .insert([
+        {
+          token_id: newTokenData.id,
+          status: "Token Booked",
+          event_time: now,
+        },
+      ]);
+
+    if (historyError) {
+      console.error("History insert error:", historyError);
+    }
+
     const newToken = {
-      id: `KIS-${String(45 + tokens.length).padStart(3, "0")}`,
-      farmer: loginId || "Demo Farmer",
-      crop,
-      quantity: Number(quantity),
-      centre: centre.name,
-      status: "Waiting",
-      createdAt: now,
-      updatedAt: now,
-      history: [{ status: "Token Booked", time: now }],
+      id: newTokenData.token_id,
+      farmer: newTokenData.farmer,
+      crop: newTokenData.crop,
+      quantity: newTokenData.quantity,
+      centre: newTokenData.centre,
+      status: newTokenData.status,
+      createdAt: newTokenData.created_at,
+      updatedAt: newTokenData.updated_at,
+      history: [
+        {
+          status: "Token Booked",
+          time: now,
+        },
+      ],
     };
 
     setTokens((prev) => [...prev, newToken]);
     setScreen("token");
-  };
+
+  } catch (error) {
+    console.error("Unexpected token error:", error);
+    alert("Something went wrong while booking token.");
+  }
+};
 
   /* =========================================
      BUYER FUNCTIONS
@@ -563,34 +744,134 @@ function App() {
   /* =========================================
      OFFICER FUNCTIONS
   ========================================= */
+const updateTokenStatus = async (tokenId) => {
+  const statusFlow = {
+    Waiting: {
+      next: "Entry Completed",
+      history: "Entry Completed",
+    },
+    "Entry Completed": {
+      next: "Processing",
+      history: "Procurement Started",
+    },
+    Processing: {
+      next: "Quality Check",
+      history: "Quality Check",
+    },
+    "Quality Check": {
+      next: "Weighing",
+      history: "Weighing",
+    },
+    Weighing: {
+      next: "Completed",
+      history: "Procurement Completed",
+    },
+  };
 
-  const updateTokenStatus = (tokenId) => {
-    const statusFlow = {
-      Waiting: { next: "Entry Completed", history: "Entry Completed" },
-      "Entry Completed": { next: "Processing", history: "Procurement Started" },
-      Processing: { next: "Quality Check", history: "Quality Check" },
-      "Quality Check": { next: "Weighing", history: "Weighing" },
-      Weighing: { next: "Completed", history: "Procurement Completed" },
-    };
+  const currentToken = tokens.find(
+    (token) => token.id === tokenId
+  );
+
+  if (!currentToken) {
+    alert("Token nahi mila.");
+    return;
+  }
+
+  const transition = statusFlow[currentToken.status];
+
+  if (!transition) {
+    return;
+  }
+
+  const now = new Date().toISOString();
+
+  try {
+    /* =========================================
+       1. UPDATE TOKEN IN SUPABASE
+    ========================================= */
+
+    const { data: updatedToken, error: tokenError } =
+      await supabase
+        .from("tokens")
+        .update({
+          status: transition.next,
+          updated_at: now,
+        })
+        .eq("token_id", tokenId)
+        .select()
+        .single();
+
+    if (tokenError) {
+      console.error("Token update error:", tokenError);
+
+      alert(
+        "Token status update nahi ho paya. Please try again."
+      );
+
+      return;
+    }
+
+    /* =========================================
+       2. SAVE STATUS HISTORY
+    ========================================= */
+
+    const { error: historyError } = await supabase
+      .from("token_history")
+      .insert([
+        {
+          token_id: updatedToken.id,
+          status: transition.history,
+          event_time: now,
+        },
+      ]);
+
+    if (historyError) {
+      console.error(
+        "Token history error:",
+        historyError
+      );
+
+      alert(
+        "Token update ho gaya, lekin history save nahi ho payi."
+      );
+    }
+
+    /* =========================================
+       3. UPDATE LOCAL UI
+    ========================================= */
 
     setTokens((prev) =>
       prev.map((token) => {
-        if (token.id !== tokenId) return token;
-        const transition = statusFlow[token.status];
-        if (!transition) return token;
-        const now = new Date().toISOString();
+        if (token.id !== tokenId) {
+          return token;
+        }
+
         return {
           ...token,
           status: transition.next,
           updatedAt: now,
           history: [
             ...(token.history || []),
-            { status: transition.history, time: now },
+            {
+              status: transition.history,
+              time: now,
+            },
           ],
         };
       })
     );
-  };
+
+  } catch (error) {
+    console.error(
+      "Unexpected status update error:",
+      error
+    );
+
+    alert(
+      "Something went wrong while updating token."
+    );
+  }
+};
 
   /* =========================================
      LIVE TOKEN HELPERS
