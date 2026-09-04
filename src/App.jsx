@@ -307,7 +307,36 @@ const translationsHi = {
   "Mark Entry": "प्रवेश दर्ज करें",
   "Start Procurement": "खरीद शुरू करें",
   "Start Quality Check": "गुणवत्ता जांच शुरू करें",
-  "Start Weighing": "वजन शुरू करें"
+  "Start Weighing": "वजन शुरू करें",
+  "Don't have an account?": "क्या आपका अकाउंट नहीं है?",
+  "Register as a New Buyer →": "नए खरीदार के रूप में रजिस्टर करें →",
+  "NEW BUYER REGISTRATION": "नया खरीदार पंजीकरण",
+  "Register as a New Buyer": "नए खरीदार के रूप में रजिस्टर करें",
+  "Create your buyer profile for Kisan Setu.": "Kisan Setu के लिए अपना खरीदार प्रोफाइल बनाएं।",
+  "Owner / Contact Name": "मालिक / संपर्क नाम",
+  "Business / Company Name": "बिज़नेस / कंपनी का नाम",
+  "Email Address": "ईमेल पता",
+  "Business Type": "बिज़नेस प्रकार",
+  "Select business type": "बिज़नेस प्रकार चुनें",
+  "Trader": "ट्रेडर",
+  "Processor": "प्रोसेसर",
+  "Wholesaler": "थोक व्यापारी",
+  "Retailer": "रिटेलर",
+  "Other": "अन्य",
+  "GSTIN": "GSTIN",
+  "PAN": "PAN",
+  "Business Address": "बिज़नेस का पता",
+  "Enter your name": "अपना नाम दर्ज करें",
+  "Enter business name": "बिज़नेस का नाम दर्ज करें",
+  "Enter email address": "ईमेल पता दर्ज करें",
+  "Enter GSTIN": "GSTIN दर्ज करें",
+  "Enter PAN": "PAN दर्ज करें",
+  "Enter business address": "बिज़नेस का पता दर्ज करें",
+  "Submit Registration": "पंजीकरण सबमिट करें",
+  "Back to Buyer Login": "← खरीदार लॉगिन पर वापस",
+  "Please fill all registration details.": "कृपया पंजीकरण की सभी जानकारी भरें।",
+  "Registration submitted successfully.": "पंजीकरण सफलतापूर्वक सबमिट हो गया।",
+  "Your application is now pending Admin verification.": "आपका आवेदन अब Admin सत्यापन के लिए लंबित है।"
 };
 
 /* =========================================
@@ -488,9 +517,7 @@ function App() {
   useEffect(() => {
     const loadTokensFromSupabase = async () => {
       try {
-        // Tokens are loaded independently so a history/relation issue
-        // can never make the officer queue appear empty after refresh.
-        const { data: tokenData, error: tokenError } = await supabase
+        const { data, error } = await supabase
           .from("tokens")
           .select(`
             id,
@@ -502,38 +529,21 @@ function App() {
             centre,
             status,
             created_at,
-            updated_at
+            updated_at,
+            token_history (
+              id,
+              status,
+              event_time
+            )
           `)
           .order("created_at", { ascending: true });
 
-        if (tokenError) {
-          console.error("Token fetch error:", tokenError);
+        if (error) {
+          console.error("Token fetch error:", error);
           return;
         }
 
-        const { data: historyData, error: historyError } = await supabase
-          .from("token_history")
-          .select("id, token_id, status, event_time")
-          .order("event_time", { ascending: true });
-
-        if (historyError) {
-          console.error("Token history fetch error:", historyError);
-        }
-
-        const historyByTokenId = {};
-        (historyData || []).forEach((item) => {
-          if (!historyByTokenId[item.token_id]) {
-            historyByTokenId[item.token_id] = [];
-          }
-
-          historyByTokenId[item.token_id].push({
-            id: item.id,
-            status: item.status,
-            time: item.event_time,
-          });
-        });
-
-        const backendTokens = (tokenData || []).map((token) => ({
+        const backendTokens = (data || []).map((token) => ({
           id: token.token_id,
           farmer: token.farmer,
           crop: token.crop,
@@ -542,19 +552,34 @@ function App() {
           status: token.status,
           createdAt: token.created_at,
           updatedAt: token.updated_at,
-          history: historyByTokenId[token.id] || [],
+          history: (token.token_history || [])
+            .sort(
+              (a, b) =>
+                new Date(a.event_time) - new Date(b.event_time)
+            )
+            .map((item) => ({
+              id: item.id,
+              status: item.status,
+              time: item.event_time,
+            })),
         }));
 
-        // Supabase is the source of truth after refresh.
-        setTokens(backendTokens);
+        setTokens((prev) => {
+          const backendIds = new Set(
+            backendTokens.map((token) => token.id)
+          );
 
-        // Keep the local cache synchronized with the backend.
-        localStorage.setItem(
-          "kisanSetuTokens",
-          JSON.stringify(backendTokens)
-        );
+          const localOnlyTokens = prev.filter(
+            (token) => !backendIds.has(token.id)
+          );
+
+          return [...backendTokens, ...localOnlyTokens];
+        });
       } catch (error) {
-        console.error("Unexpected token fetch error:", error);
+        console.error(
+          "Unexpected token fetch error:",
+          error
+        );
       }
     };
 
@@ -630,6 +655,51 @@ const [officerCentre, setOfficerCentre] = useState(() => {
   const [buyerQuantity, setBuyerQuantity] = useState("");
   const [buyerRate, setBuyerRate] = useState("");
   const [buyerLocation, setBuyerLocation] = useState("");
+
+  /* =========================================
+     BUYER REGISTRATION
+  ========================================= */
+
+  const [buyerRegisterMode, setBuyerRegisterMode] = useState(false);
+  const [buyerName, setBuyerName] = useState("");
+  const [buyerBusiness, setBuyerBusiness] = useState("");
+  const [buyerEmail, setBuyerEmail] = useState("");
+  const [buyerBusinessType, setBuyerBusinessType] = useState("");
+  const [buyerGstin, setBuyerGstin] = useState("");
+  const [buyerPan, setBuyerPan] = useState("");
+  const [buyerAddress, setBuyerAddress] = useState("");
+
+  const submitBuyerRegistration = () => {
+    if (
+      !buyerName.trim() ||
+      !buyerBusiness.trim() ||
+      !/^[0-9]{10}$/.test(loginMobile) ||
+      !buyerEmail.trim() ||
+      !buyerBusinessType ||
+      !buyerGstin.trim() ||
+      !buyerPan.trim() ||
+      !buyerAddress.trim()
+    ) {
+      alert(t("Please fill all registration details."));
+      return;
+    }
+
+    alert(
+      `${t("Registration submitted successfully.")}\\n\\n${t(
+        "Your application is now pending Admin verification."
+      )}`
+    );
+
+    setBuyerRegisterMode(false);
+    setBuyerName("");
+    setBuyerBusiness("");
+    setBuyerEmail("");
+    setBuyerBusinessType("");
+    setBuyerGstin("");
+    setBuyerPan("");
+    setBuyerAddress("");
+    setLoginMobile("");
+  };
 
   /* =========================================
      DEMO RATES
@@ -741,8 +811,8 @@ const [officerCentre, setOfficerCentre] = useState(() => {
         centreName: officer.procurement_centres.name,
       });
 
-      // Store officer centre information in sessionStorage
-      sessionStorage.setItem(
+      // Store officer centre information in localStorage
+      localStorage.setItem(
         "kisanSetuOfficerCentre",
         JSON.stringify({
           officerId: officer.id,
@@ -1367,7 +1437,10 @@ const updateTokenStatus = async (tokenId) => {
 
               {loginRole === "farmer" && t("FARMER LOGIN")}
               {loginRole === "officer" && t("PROCUREMENT OFFICER LOGIN")}
-              {loginRole === "buyer" && t("VERIFIED BUYER LOGIN")}
+              {loginRole === "buyer" &&
+                (buyerRegisterMode
+                  ? t("NEW BUYER REGISTRATION")
+                  : t("VERIFIED BUYER LOGIN"))}
               {loginRole === "admin" && t("ADMIN LOGIN")}
 
             </div>
@@ -1376,15 +1449,131 @@ const updateTokenStatus = async (tokenId) => {
 
               {loginRole === "farmer" && t("Welcome, Farmer")}
               {loginRole === "officer" && t("Officer Login")}
-              {loginRole === "buyer" && t("Buyer Login")}
+              {loginRole === "buyer" &&
+                (buyerRegisterMode
+                  ? t("Register as a New Buyer")
+                  : t("Buyer Login"))}
               {loginRole === "admin" && t("Admin Login")}
 
             </h1>
 
             <p className="login-subtitle">
-              {t("Login to access your Kisan Setu dashboard.")}
+              {loginRole === "buyer" && buyerRegisterMode
+                ? t("Create your buyer profile for Kisan Setu.")
+                : t("Login to access your Kisan Setu dashboard.")}
             </p>
 
+            {loginRole === "buyer" && buyerRegisterMode ? (
+              <>
+                <div className="login-field">
+                  <label>{t("Owner / Contact Name")}</label>
+                  <input
+                    type="text"
+                    placeholder={t("Enter your name")}
+                    value={buyerName}
+                    onChange={(e) => setBuyerName(e.target.value)}
+                  />
+                </div>
+
+                <div className="login-field">
+                  <label>{t("Business / Company Name")}</label>
+                  <input
+                    type="text"
+                    placeholder={t("Enter business name")}
+                    value={buyerBusiness}
+                    onChange={(e) => setBuyerBusiness(e.target.value)}
+                  />
+                </div>
+
+                <div className="login-field">
+                  <label>{t("Registered Mobile Number")}</label>
+                  <input
+                    type="tel"
+                    maxLength="10"
+                    placeholder={t("10 digit mobile number")}
+                    value={loginMobile}
+                    onChange={(e) =>
+                      setLoginMobile(e.target.value.replace(/\D/g, ""))
+                    }
+                  />
+                </div>
+
+                <div className="login-field">
+                  <label>{t("Email Address")}</label>
+                  <input
+                    type="email"
+                    placeholder={t("Enter email address")}
+                    value={buyerEmail}
+                    onChange={(e) => setBuyerEmail(e.target.value)}
+                  />
+                </div>
+
+                <div className="login-field">
+                  <label>{t("Business Type")}</label>
+                  <select
+                    value={buyerBusinessType}
+                    onChange={(e) => setBuyerBusinessType(e.target.value)}
+                  >
+                    <option value="">{t("Select business type")}</option>
+                    <option value="Trader">{t("Trader")}</option>
+                    <option value="Processor">{t("Processor")}</option>
+                    <option value="Wholesaler">{t("Wholesaler")}</option>
+                    <option value="Retailer">{t("Retailer")}</option>
+                    <option value="Other">{t("Other")}</option>
+                  </select>
+                </div>
+
+                <div className="login-field">
+                  <label>{t("GSTIN")}</label>
+                  <input
+                    type="text"
+                    placeholder={t("Enter GSTIN")}
+                    value={buyerGstin}
+                    onChange={(e) =>
+                      setBuyerGstin(e.target.value.toUpperCase())
+                    }
+                  />
+                </div>
+
+                <div className="login-field">
+                  <label>{t("PAN")}</label>
+                  <input
+                    type="text"
+                    maxLength="10"
+                    placeholder={t("Enter PAN")}
+                    value={buyerPan}
+                    onChange={(e) =>
+                      setBuyerPan(e.target.value.toUpperCase())
+                    }
+                  />
+                </div>
+
+                <div className="login-field">
+                  <label>{t("Business Address")}</label>
+                  <textarea
+                    rows="3"
+                    placeholder={t("Enter business address")}
+                    value={buyerAddress}
+                    onChange={(e) => setBuyerAddress(e.target.value)}
+                  />
+                </div>
+
+                <button
+                  className="primary-button"
+                  onClick={submitBuyerRegistration}
+                >
+                  {t("Submit Registration")}
+                </button>
+
+                <button
+                  className="text-button"
+                  onClick={() => setBuyerRegisterMode(false)}
+                >
+                  {t("Back to Buyer Login")}
+                </button>
+              </>
+            ) : (
+              <>
             {/* FARMER / OFFICER / BUYER */}
 
             {loginRole !== "admin" && (
@@ -1553,6 +1742,35 @@ const updateTokenStatus = async (tokenId) => {
                   </div>
 
                 </div>
+              </>
+            )}
+
+              {loginRole === "buyer" && (
+                <div
+                  style={{
+                    marginTop: "20px",
+                    paddingTop: "18px",
+                    textAlign: "center",
+                    borderTop: "1px solid #e5e7eb",
+                  }}
+                >
+                  <span style={{ color: "#6b7280" }}>
+                    {t("Don't have an account?")}{" "}
+                  </span>
+
+                  <button
+                    type="button"
+                    className="text-button"
+                    onClick={() => {
+                      setBuyerRegisterMode(true);
+                      setOtpSent(false);
+                      setLoginOtp("");
+                    }}
+                  >
+                    {t("Register as a New Buyer →")}
+                  </button>
+                </div>
+              )}
               </>
             )}
 
@@ -2559,6 +2777,358 @@ const updateTokenStatus = async (tokenId) => {
         </main>
       )}
            {/* =========================================
+          PROCUREMENT OFFICER
+      ========================================= */}
+
+      {screen === "officer" && loggedInRole === "officer" && (
+        <main className="container dashboard">
+
+          <div className="dashboard-heading">
+
+            <div>
+
+              <div className="eyebrow">
+                {t("PROCUREMENT MANAGEMENT")}
+              </div>
+
+              <h1>
+                {t("Officer Dashboard")}
+              </h1>
+
+              <p>
+                {t("Manage procurement centre token queue.")}
+              </p>
+
+              {officerCentre && (
+                <p>
+                  <strong>
+                    {officerCentre.centreName}
+                  </strong>
+                </p>
+              )}
+
+            </div>
+
+            <span className="live-badge">
+              {t("● LIVE")}
+            </span>
+
+          </div>
+
+
+          {/* =========================================
+              CENTRE-SPECIFIC TOKENS
+          ========================================= */}
+
+          <div className="dashboard-stats">
+
+            <div className="stat-card">
+
+              <span>
+                {t("Waiting")}
+              </span>
+
+              <strong>
+                {
+                  tokens.filter(
+                    (token) =>
+                      token.centre === officerCentre?.centreName &&
+                      token.status === "Waiting"
+                  ).length
+                }
+              </strong>
+
+            </div>
+
+
+            <div className="stat-card">
+
+              <span>
+                {t("Processing")}
+              </span>
+
+              <strong>
+                {
+                  tokens.filter(
+                    (token) =>
+                      token.centre === officerCentre?.centreName &&
+                      token.status === "Processing"
+                  ).length
+                }
+              </strong>
+
+            </div>
+
+
+            <div className="stat-card">
+
+              <span>
+                {t("Completed")}
+              </span>
+
+              <strong>
+                {
+                  tokens.filter(
+                    (token) =>
+                      token.centre === officerCentre?.centreName &&
+                      token.status === "Completed"
+                  ).length
+                }
+              </strong>
+
+            </div>
+
+
+            <div className="stat-card">
+
+              <span>
+                {t("Centre Capacity")}
+              </span>
+
+              <strong>
+                72%
+              </strong>
+
+            </div>
+
+          </div>
+
+
+          {/* =========================================
+              TOKEN QUEUE
+          ========================================= */}
+
+          <div className="dashboard-card">
+
+            <div className="section-header">
+
+              <div>
+
+                <h2>
+                  {t("🎫 Token Queue")}
+                </h2>
+
+                <p>
+                  {officerCentre?.centreName ||
+                    "Procurement Centre"}
+                </p>
+
+              </div>
+
+
+              <button
+                className="small-button"
+                onClick={() =>
+                  alert(t("Queue refreshed"))
+                }
+              >
+                {t("Refresh")}
+              </button>
+
+            </div>
+
+
+            <div className="table-wrapper">
+
+              <table>
+
+                <thead>
+
+                  <tr>
+                    <th>{t("Token")}</th>
+                    <th>{t("Farmer")}</th>
+                    <th>{t("Crop")}</th>
+                    <th>{t("Quantity")}</th>
+                    <th>{t("Status")}</th>
+                    <th>{t("Action")}</th>
+                  </tr>
+
+                </thead>
+
+
+                <tbody>
+
+                  {tokens
+                    .filter(
+                      (token) =>
+                        token.centre ===
+                        officerCentre?.centreName
+                    )
+                    .map((token) => (
+
+                      <tr key={token.id}>
+
+                        <td>
+                          <strong>
+                            {token.id}
+                          </strong>
+                        </td>
+
+
+                        <td>
+                          {token.farmer}
+                        </td>
+
+
+                        <td>
+                          {token.crop}
+                        </td>
+
+
+                        <td>
+                          {token.quantity} q
+                        </td>
+
+
+                        <td>
+
+                          <span
+                            className={`table-status ${token.status.toLowerCase()}`}
+                          >
+                            {t(token.status)}
+                          </span>
+
+                        </td>
+
+
+                        <td>
+
+                          {token.status !== "Completed" && (
+                            <button
+                              className="action-button"
+                              onClick={() =>
+                                updateTokenStatus(token.id)
+                              }
+                            >
+                              {t(
+                                getNextOfficerAction(
+                                  token.status
+                                )
+                              )}
+                            </button>
+                          )}
+
+                        </td>
+
+                      </tr>
+
+                    ))}
+
+
+                  {tokens.filter(
+                    (token) =>
+                      token.centre ===
+                      officerCentre?.centreName
+                  ).length === 0 && (
+
+                    <tr>
+
+                      <td
+                        colSpan="6"
+                        style={{
+                          textAlign: "center",
+                          padding: "30px"
+                        }}
+                      >
+                        {t("No tokens available for this centre.")}
+                      </td>
+
+                    </tr>
+
+                  )}
+
+                </tbody>
+
+              </table>
+
+            </div>
+
+          </div>
+
+
+          {/* =========================================
+              CENTRE OPERATIONS
+          ========================================= */}
+
+          <div className="dashboard-card">
+
+            <div className="section-header">
+
+              <div>
+
+                <h2>
+                  {t("📊 Centre Operations")}
+                </h2>
+
+              </div>
+
+            </div>
+
+
+            <div className="progress-list">
+
+              <div className="progress-item">
+
+                <div>
+
+                  <span>
+                    {t("Daily Capacity")}
+                  </span>
+
+                  <strong>
+                    72%
+                  </strong>
+
+                </div>
+
+
+                <div className="progress">
+
+                  <div
+                    style={{
+                      width: "72%"
+                    }}
+                  ></div>
+
+                </div>
+
+              </div>
+
+
+              <div className="progress-item">
+
+                <div>
+
+                  <span>
+                    {t("Queue Load")}
+                  </span>
+
+                  <strong>
+                    38%
+                  </strong>
+
+                </div>
+
+
+                <div className="progress">
+
+                  <div
+                    style={{
+                      width: "38%"
+                    }}
+                  ></div>
+
+                </div>
+
+              </div>
+
+            </div>
+
+          </div>
+
+        </main>
+      )}
+      {/* =========================================
           BUYER DASHBOARD
       ========================================= */}
 
