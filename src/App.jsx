@@ -336,7 +336,15 @@ const translationsHi = {
   "Back to Buyer Login": "← खरीदार लॉगिन पर वापस",
   "Please fill all registration details.": "कृपया पंजीकरण की सभी जानकारी भरें।",
   "Registration submitted successfully.": "पंजीकरण सफलतापूर्वक सबमिट हो गया।",
-  "Your application is now pending Admin verification.": "आपका आवेदन अब Admin सत्यापन के लिए लंबित है।"
+  "Your application is now pending Admin verification.": "आपका आवेदन अब Admin सत्यापन के लिए लंबित है।",
+  "AI Voice Assistant": "AI वॉइस असिस्टेंट",
+  "Get quick help with Kisan Setu features and procurement.": "Kisan Setu के फीचर्स और खरीद प्रक्रिया में तुरंत मदद पाएं।",
+  "Ask Assistant": "असिस्टेंट से पूछें",
+  "Voice Assistant": "वॉइस असिस्टेंट",
+  "Voice assistance will be available soon.": "वॉइस असिस्टेंस जल्द उपलब्ध होगा।",
+  "Tap to Speak": "बोलने के लिए टैप करें",
+  "Demo Feature": "डेमो फीचर",
+  "Close": "बंद करें"
 };
 
 /* =========================================
@@ -369,6 +377,7 @@ function App() {
   ========================================= */
 
   const [screen, setScreen] = useState("roles");
+  const [showVoiceAssistant, setShowVoiceAssistant] = useState(false);
 
   /* =========================================
      FARMER CROP FLOW
@@ -1809,6 +1818,57 @@ const updateTokenStatus = async (tokenId) => {
 
             </div>
 
+          </div>
+
+          <div
+            style={{
+              marginBottom: "24px",
+              padding: "18px 20px",
+              borderRadius: "16px",
+              background: "linear-gradient(135deg, #f0fdf4, #ecfeff)",
+              border: "1px solid #bbf7d0",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: "16px",
+              flexWrap: "wrap",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
+              <div
+                style={{
+                  width: "52px",
+                  height: "52px",
+                  borderRadius: "50%",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  background: "#ffffff",
+                  fontSize: "26px",
+                  boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
+                }}
+              >
+                🎙️
+              </div>
+
+              <div>
+                <strong style={{ display: "block", fontSize: "17px" }}>
+                  {t("AI Voice Assistant")}
+                </strong>
+                <span style={{ color: "#64748b", fontSize: "14px" }}>
+                  {t("Get quick help with Kisan Setu features and procurement.")}
+                </span>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              className="primary-button"
+              onClick={() => setShowVoiceAssistant(true)}
+              style={{ margin: 0, whiteSpace: "nowrap" }}
+            >
+              🎙️ {t("Ask Assistant")}
+            </button>
           </div>
 
           {farmerToken && (
@@ -3726,6 +3786,86 @@ const updateTokenStatus = async (tokenId) => {
           </div>
 
         </main>
+      )}
+
+      {showVoiceAssistant && loggedInRole === "farmer" && (
+        <div
+          onClick={() => setShowVoiceAssistant(false)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(15, 23, 42, 0.55)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "20px",
+            zIndex: 1000,
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: "100%",
+              maxWidth: "420px",
+              background: "#ffffff",
+              borderRadius: "22px",
+              padding: "28px",
+              textAlign: "center",
+              boxShadow: "0 20px 50px rgba(0,0,0,0.2)",
+            }}
+          >
+            <div style={{ fontSize: "52px", marginBottom: "10px" }}>
+              🎙️
+            </div>
+
+            <div className="eyebrow">
+              {t("Voice Assistant")}
+            </div>
+
+            <h2 style={{ margin: "8px 0 10px" }}>
+              {t("AI Voice Assistant")}
+            </h2>
+
+            <p style={{ color: "#64748b", marginBottom: "24px" }}>
+              {t("Voice assistance will be available soon.")}
+            </p>
+
+            <button
+              type="button"
+              className="primary-button"
+              style={{
+                width: "100%",
+                marginBottom: "10px",
+                opacity: 0.9,
+              }}
+              onClick={() => {}}
+            >
+              🎤 {t("Tap to Speak")}
+            </button>
+
+            <div
+              style={{
+                display: "inline-block",
+                padding: "6px 12px",
+                borderRadius: "999px",
+                background: "#f1f5f9",
+                color: "#64748b",
+                fontSize: "12px",
+                marginBottom: "18px",
+              }}
+            >
+              {t("Demo Feature")}
+            </div>
+
+            <button
+              type="button"
+              className="text-button"
+              onClick={() => setShowVoiceAssistant(false)}
+            >
+              {t("Close")}
+            </button>
+          </div>
+        </div>
       )}
 
       {/* =========================================
