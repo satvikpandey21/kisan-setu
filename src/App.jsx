@@ -383,7 +383,12 @@ function App() {
       window.removeEventListener("storage", handleStorage);
     };
   }, []);
-    useEffect(() => {
+
+  /* =========================================
+     SUPABASE TOKEN REALTIME
+  ========================================= */
+
+  useEffect(() => {
     const channel = supabase
       .channel("kisan-setu-token-updates")
       .on(
@@ -420,18 +425,49 @@ function App() {
           schema: "public",
           table: "token_history",
         },
-        (payload) => {
+        async (payload) => {
           console.log("Realtime history update:", payload);
 
           const newHistory = payload.new;
 
+          const { data: tokenData, error } = await supabase
+            .from("tokens")
+            .select("token_id")
+            .eq("id", newHistory.token_id)
+            .single();
+
+          if (error || !tokenData) {
+            console.error("History token lookup error:", error);
+            return;
+          }
+
           setTokens((prev) =>
             prev.map((token) => {
-              if (!token.history) {
+              if (token.id !== tokenData.token_id) {
                 return token;
               }
 
-              return token;
+              const alreadyExists = (token.history || []).some(
+                (item) =>
+                  item.status === newHistory.status &&
+                  item.time === newHistory.event_time
+              );
+
+              if (alreadyExists) {
+                return token;
+              }
+
+              return {
+                ...token,
+                history: [
+                  ...(token.history || []),
+                  {
+                    id: newHistory.id,
+                    status: newHistory.status,
+                    time: newHistory.event_time,
+                  },
+                ],
+              };
             })
           );
         }
@@ -445,70 +481,16 @@ function App() {
     };
   }, []);
 
-  useEffect(() => {
-    const loadTokenHistory = async () => {
-      if (!tokens.length) return;
-
-      try {
-        const { data, error } = await supabase
-          .from("token_history")
-          .select(`
-            id,
-            token_id,
-            status,
-            event_time,
-            tokens (
-              token_id
-            )
-          `)
-          .order("event_time", { ascending: true });
-
-        if (error) {
-          console.error("Token history fetch error:", error);
-          return;
-        }
-
-        setTokens((prev) =>
-          prev.map((token) => {
-            const history = (data || [])
-              .filter(
-                (item) =>
-                  item.tokens?.token_id === token.id
-              )
-              .map((item) => ({
-                status: item.status,
-                time: item.event_time,
-              }));
-
-            if (!history.length) {
-              return token;
-            }
-
-            return {
-              ...token,
-              history,
-            };
-          })
-        );
-      } catch (error) {
-        console.error(
-          "Unexpected history fetch error:",
-          error
-        );
-      }
-    };
-
-    loadTokenHistory();
-  }, []);
-
-  // =========================================
-  // LOAD TOKENS FROM SUPABASE
-  // =========================================
+  /* =========================================
+     LOAD TOKENS + HISTORY FROM SUPABASE
+  ========================================= */
 
   useEffect(() => {
     const loadTokensFromSupabase = async () => {
       try {
-        const { data, error } = await supabase
+        // Tokens are loaded independently so a history/relation issue
+        // can never make the officer queue appear empty after refresh.
+        const { data: tokenData, error: tokenError } = await supabase
           .from("tokens")
           .select(`
             id,
@@ -524,12 +506,34 @@ function App() {
           `)
           .order("created_at", { ascending: true });
 
-        if (error) {
-          console.error("Token fetch error:", error);
+        if (tokenError) {
+          console.error("Token fetch error:", tokenError);
           return;
         }
 
-        const backendTokens = (data || []).map((token) => ({
+        const { data: historyData, error: historyError } = await supabase
+          .from("token_history")
+          .select("id, token_id, status, event_time")
+          .order("event_time", { ascending: true });
+
+        if (historyError) {
+          console.error("Token history fetch error:", historyError);
+        }
+
+        const historyByTokenId = {};
+        (historyData || []).forEach((item) => {
+          if (!historyByTokenId[item.token_id]) {
+            historyByTokenId[item.token_id] = [];
+          }
+
+          historyByTokenId[item.token_id].push({
+            id: item.id,
+            status: item.status,
+            time: item.event_time,
+          });
+        });
+
+        const backendTokens = (tokenData || []).map((token) => ({
           id: token.token_id,
           farmer: token.farmer,
           crop: token.crop,
@@ -538,53 +542,86 @@ function App() {
           status: token.status,
           createdAt: token.created_at,
           updatedAt: token.updated_at,
-          history: [],
+          history: historyByTokenId[token.id] || [],
         }));
 
-        setTokens((prev) => {
-          // Keep locally available tokens if they are not yet in Supabase
-          const backendIds = new Set(
-            backendTokens.map((token) => token.id)
-          );
+        // Supabase is the source of truth after refresh.
+        setTokens(backendTokens);
 
-          const localOnlyTokens = prev.filter(
-            (token) => !backendIds.has(token.id)
-          );
-
-          return [...backendTokens, ...localOnlyTokens];
-        });
-
-      } catch (error) {
-        console.error(
-          "Unexpected token fetch error:",
-          error
+        // Keep the local cache synchronized with the backend.
+        localStorage.setItem(
+          "kisanSetuTokens",
+          JSON.stringify(backendTokens)
         );
+      } catch (error) {
+        console.error("Unexpected token fetch error:", error);
       }
     };
 
     loadTokensFromSupabase();
   }, []);
+
   /* =========================================
      AUTH STATE
   ========================================= */
 
   const [loginRole, setLoginRole] = useState("");
-  const [loggedInRole, setLoggedInRole] = useState("");
+  const [loggedInRole, setLoggedInRole] = useState(() =>
+    sessionStorage.getItem("kisanSetuLoggedInRole") || ""
+  );
 
-  const [loginId, setLoginId] = useState("");
-  const [loginMobile, setLoginMobile] = useState("");
+  const [loginId, setLoginId] = useState(() =>
+    sessionStorage.getItem("kisanSetuLoginId") || ""
+  );
+  const [loginMobile, setLoginMobile] = useState(() =>
+    sessionStorage.getItem("kisanSetuLoginMobile") || ""
+  );
   const [loginOtp, setLoginOtp] = useState("");
   const [otpSent, setOtpSent] = useState(false);
 
   const [adminPassword, setAdminPassword] = useState("");
 const [officerCentre, setOfficerCentre] = useState(() => {
   try {
-    const saved = localStorage.getItem("kisanSetuOfficerCentre");
+    const saved = sessionStorage.getItem("kisanSetuOfficerCentre");
     return saved ? JSON.parse(saved) : null;
   } catch {
     return null;
   }
 });
+
+  /* =========================================
+     RESTORE LOGIN SESSION AFTER REFRESH
+  ========================================= */
+
+  useEffect(() => {
+    const savedRole = sessionStorage.getItem("kisanSetuLoggedInRole");
+    const savedLoginId = sessionStorage.getItem("kisanSetuLoginId");
+    const savedLoginMobile = sessionStorage.getItem("kisanSetuLoginMobile");
+
+    if (savedRole) {
+      setLoggedInRole(savedRole);
+      setLoginRole(savedRole);
+
+      if (savedLoginId) {
+        setLoginId(savedLoginId);
+      }
+
+      if (savedLoginMobile) {
+        setLoginMobile(savedLoginMobile);
+      }
+
+      if (savedRole === "farmer") {
+        setScreen("home");
+      } else if (savedRole === "buyer") {
+        setScreen("buyer");
+      } else if (savedRole === "officer") {
+        setScreen("officer");
+      } else if (savedRole === "admin") {
+        setScreen("admin");
+      }
+    }
+  }, []);
+
   /* =========================================
      BUYER FORM
   ========================================= */
@@ -644,6 +681,10 @@ const [officerCentre, setOfficerCentre] = useState(() => {
       // Farmer / Buyer login
       if (loginRole !== "officer") {
         setLoggedInRole(loginRole);
+        setLoginRole(loginRole);
+        sessionStorage.setItem("kisanSetuLoggedInRole", loginRole);
+        sessionStorage.setItem("kisanSetuLoginId", loginId.trim());
+        sessionStorage.setItem("kisanSetuLoginMobile", loginMobile);
 
         if (loginRole === "farmer") {
           setScreen("home");
@@ -686,6 +727,10 @@ const [officerCentre, setOfficerCentre] = useState(() => {
 
       // Save logged-in officer + assigned centre
       setLoggedInRole("officer");
+      setLoginRole("officer");
+      sessionStorage.setItem("kisanSetuLoggedInRole", "officer");
+      sessionStorage.setItem("kisanSetuLoginId", loginId.trim());
+      sessionStorage.setItem("kisanSetuLoginMobile", loginMobile);
       setScreen("officer");
 
       // Store officer centre information in React state
@@ -696,8 +741,8 @@ const [officerCentre, setOfficerCentre] = useState(() => {
         centreName: officer.procurement_centres.name,
       });
 
-      // Store officer centre information in localStorage
-      localStorage.setItem(
+      // Store officer centre information in sessionStorage
+      sessionStorage.setItem(
         "kisanSetuOfficerCentre",
         JSON.stringify({
           officerId: officer.id,
@@ -724,12 +769,21 @@ const [officerCentre, setOfficerCentre] = useState(() => {
     }
 
     setLoggedInRole("admin");
+    setLoginRole("admin");
+    sessionStorage.setItem("kisanSetuLoggedInRole", "admin");
+    sessionStorage.setItem("kisanSetuLoginId", loginId.trim());
     setScreen("admin");
   };
 
   const logout = () => {
+    sessionStorage.removeItem("kisanSetuLoggedInRole");
+    sessionStorage.removeItem("kisanSetuLoginId");
+    sessionStorage.removeItem("kisanSetuLoginMobile");
+    sessionStorage.removeItem("kisanSetuOfficerCentre");
+
     setLoggedInRole("");
     setLoginRole("");
+    setOfficerCentre(null);
     resetLoginFields();
     setScreen("roles");
   };
@@ -2505,358 +2559,6 @@ const updateTokenStatus = async (tokenId) => {
         </main>
       )}
            {/* =========================================
-          PROCUREMENT OFFICER
-      ========================================= */}
-
-      {screen === "officer" && loggedInRole === "officer" && (
-        <main className="container dashboard">
-
-          <div className="dashboard-heading">
-
-            <div>
-
-              <div className="eyebrow">
-                {t("PROCUREMENT MANAGEMENT")}
-              </div>
-
-              <h1>
-                {t("Officer Dashboard")}
-              </h1>
-
-              <p>
-                {t("Manage procurement centre token queue.")}
-              </p>
-
-              {officerCentre && (
-                <p>
-                  <strong>
-                    {officerCentre.centreName}
-                  </strong>
-                </p>
-              )}
-
-            </div>
-
-            <span className="live-badge">
-              {t("● LIVE")}
-            </span>
-
-          </div>
-
-
-          {/* =========================================
-              CENTRE-SPECIFIC TOKENS
-          ========================================= */}
-
-          <div className="dashboard-stats">
-
-            <div className="stat-card">
-
-              <span>
-                {t("Waiting")}
-              </span>
-
-              <strong>
-                {
-                  tokens.filter(
-                    (token) =>
-                      token.centre === officerCentre?.centreName &&
-                      token.status === "Waiting"
-                  ).length
-                }
-              </strong>
-
-            </div>
-
-
-            <div className="stat-card">
-
-              <span>
-                {t("Processing")}
-              </span>
-
-              <strong>
-                {
-                  tokens.filter(
-                    (token) =>
-                      token.centre === officerCentre?.centreName &&
-                      token.status === "Processing"
-                  ).length
-                }
-              </strong>
-
-            </div>
-
-
-            <div className="stat-card">
-
-              <span>
-                {t("Completed")}
-              </span>
-
-              <strong>
-                {
-                  tokens.filter(
-                    (token) =>
-                      token.centre === officerCentre?.centreName &&
-                      token.status === "Completed"
-                  ).length
-                }
-              </strong>
-
-            </div>
-
-
-            <div className="stat-card">
-
-              <span>
-                {t("Centre Capacity")}
-              </span>
-
-              <strong>
-                72%
-              </strong>
-
-            </div>
-
-          </div>
-
-
-          {/* =========================================
-              TOKEN QUEUE
-          ========================================= */}
-
-          <div className="dashboard-card">
-
-            <div className="section-header">
-
-              <div>
-
-                <h2>
-                  {t("🎫 Token Queue")}
-                </h2>
-
-                <p>
-                  {officerCentre?.centreName ||
-                    "Procurement Centre"}
-                </p>
-
-              </div>
-
-
-              <button
-                className="small-button"
-                onClick={() =>
-                  alert(t("Queue refreshed"))
-                }
-              >
-                {t("Refresh")}
-              </button>
-
-            </div>
-
-
-            <div className="table-wrapper">
-
-              <table>
-
-                <thead>
-
-                  <tr>
-                    <th>{t("Token")}</th>
-                    <th>{t("Farmer")}</th>
-                    <th>{t("Crop")}</th>
-                    <th>{t("Quantity")}</th>
-                    <th>{t("Status")}</th>
-                    <th>{t("Action")}</th>
-                  </tr>
-
-                </thead>
-
-
-                <tbody>
-
-                  {tokens
-                    .filter(
-                      (token) =>
-                        token.centre ===
-                        officerCentre?.centreName
-                    )
-                    .map((token) => (
-
-                      <tr key={token.id}>
-
-                        <td>
-                          <strong>
-                            {token.id}
-                          </strong>
-                        </td>
-
-
-                        <td>
-                          {token.farmer}
-                        </td>
-
-
-                        <td>
-                          {token.crop}
-                        </td>
-
-
-                        <td>
-                          {token.quantity} q
-                        </td>
-
-
-                        <td>
-
-                          <span
-                            className={`table-status ${token.status.toLowerCase()}`}
-                          >
-                            {t(token.status)}
-                          </span>
-
-                        </td>
-
-
-                        <td>
-
-                          {token.status !== "Completed" && (
-                            <button
-                              className="action-button"
-                              onClick={() =>
-                                updateTokenStatus(token.id)
-                              }
-                            >
-                              {t(
-                                getNextOfficerAction(
-                                  token.status
-                                )
-                              )}
-                            </button>
-                          )}
-
-                        </td>
-
-                      </tr>
-
-                    ))}
-
-
-                  {tokens.filter(
-                    (token) =>
-                      token.centre ===
-                      officerCentre?.centreName
-                  ).length === 0 && (
-
-                    <tr>
-
-                      <td
-                        colSpan="6"
-                        style={{
-                          textAlign: "center",
-                          padding: "30px"
-                        }}
-                      >
-                        {t("No tokens available for this centre.")}
-                      </td>
-
-                    </tr>
-
-                  )}
-
-                </tbody>
-
-              </table>
-
-            </div>
-
-          </div>
-
-
-          {/* =========================================
-              CENTRE OPERATIONS
-          ========================================= */}
-
-          <div className="dashboard-card">
-
-            <div className="section-header">
-
-              <div>
-
-                <h2>
-                  {t("📊 Centre Operations")}
-                </h2>
-
-              </div>
-
-            </div>
-
-
-            <div className="progress-list">
-
-              <div className="progress-item">
-
-                <div>
-
-                  <span>
-                    {t("Daily Capacity")}
-                  </span>
-
-                  <strong>
-                    72%
-                  </strong>
-
-                </div>
-
-
-                <div className="progress">
-
-                  <div
-                    style={{
-                      width: "72%"
-                    }}
-                  ></div>
-
-                </div>
-
-              </div>
-
-
-              <div className="progress-item">
-
-                <div>
-
-                  <span>
-                    {t("Queue Load")}
-                  </span>
-
-                  <strong>
-                    38%
-                  </strong>
-
-                </div>
-
-
-                <div className="progress">
-
-                  <div
-                    style={{
-                      width: "38%"
-                    }}
-                  ></div>
-
-                </div>
-
-              </div>
-
-            </div>
-
-          </div>
-
-        </main>
-      )}
-      {/* =========================================
           BUYER DASHBOARD
       ========================================= */}
 
