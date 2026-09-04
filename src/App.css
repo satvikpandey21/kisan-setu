@@ -1144,3 +1144,457 @@ footer small {
     letter-spacing: 5px;
   }
 }
+/* =========================================
+   CROP SELECTION
+========================================= */
+
+.crop-selection {
+  width: 100%;
+  margin-bottom: 18px;
+}
+
+.crop-selection > label {
+  display: block;
+  font-size: 14px;
+  font-weight: 700;
+  margin-bottom: 10px;
+  color: #303030;
+}
+
+.crop-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.crop-card {
+  position: relative;
+  min-height: 125px;
+  padding: 16px 10px;
+  border: 2px solid #dce4dc;
+  border-radius: 14px;
+  background: #ffffff;
+  color: #172117;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  transition: 0.2s ease;
+  cursor: pointer;
+}
+
+.crop-card:hover {
+  border-color: #15803d;
+  background: #f7fcf8;
+  transform: translateY(-2px);
+}
+
+.crop-card.selected {
+  border-color: #15803d;
+  background: #eaf7ed;
+  box-shadow: 0 0 0 2px rgba(21, 128, 61, 0.08);
+}
+
+.crop-emoji {
+  font-size: 38px;
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
+.crop-name {
+  font-size: 16px;
+  font-weight: 800;
+  color: #172117;
+}
+
+.crop-hindi {
+  font-size: 14px;
+  color: #666;
+  font-weight: 600;
+}
+
+.crop-check {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 23px;
+  height: 23px;
+  border-radius: 50%;
+  background: #15803d;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+/* BUYER CROP SELECTION */
+
+.buyer-crop-selection {
+  grid-column: 1 / -1;
+}
+
+/* MOBILE CROP CARDS */
+
+@media (max-width: 800px) {
+  .crop-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 600px) {
+  .crop-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+
+  .crop-card {
+    min-height: 115px;
+    padding: 14px 8px;
+  }
+
+  .crop-emoji {
+    font-size: 34px;
+  }
+
+  .crop-name {
+    font-size: 15px;
+  }
+
+  .crop-hindi {
+    font-size: 13px;
+  }
+}
+/* =========================================
+   CROP SELECTION
+========================================= */
+
+.crop-selection {
+  width: 100%;
+  margin-bottom: 18px;
+}
+
+.form-grid .crop-selection {
+  grid-column: 1 / -1;
+}
+
+.crop-selection > label {
+  display: block;
+  font-size: 14px;
+  font-weight: 700;
+  margin-bottom: 10px;
+  color: #303030;
+}
+
+.crop-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.crop-card {
+  position: relative;
+  min-height: 125px;
+  padding: 16px 10px;
+  border: 2px solid #dce4dc;
+  border-radius: 14px;
+  background: #ffffff;
+  color: #172117;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  transition: 0.2s ease;
+  cursor: pointer;
+}
+
+.crop-card:hover {
+  border-color: #15803d;
+  background: #f7fcf8;
+  transform: translateY(-2px);
+}
+
+.crop-card.selected {
+  border-color: #15803d;
+  background: #eaf7ed;
+  box-shadow: 0 0 0 2px rgba(21, 128, 61, 0.08);
+}
+
+.crop-emoji {
+  font-size: 38px;
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
+.crop-name {
+  font-size: 16px;
+  font-weight: 800;
+  color: #172117;
+}
+
+.crop-hindi {
+  font-size: 14px;
+  color: #666;
+  font-weight: 600;
+}
+
+.crop-check {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 23px;
+  height: 23px;
+  border-radius: 50%;
+  background: #15803d;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+@media (max-width: 800px) {
+  .crop-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 600px) {
+  .crop-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+
+  .crop-card {
+    min-height: 115px;
+    padding: 14px 8px;
+  }
+
+  .crop-emoji {
+    font-size: 34px;
+  }
+
+  .crop-name {
+    font-size: 15px;
+  }
+
+  .crop-hindi {
+    font-size: 13px;
+  }
+}
+/* =========================================
+   LANGUAGE TOGGLE
+========================================= */
+
+.language-switcher {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 4px;
+  background: #ffffff;
+  border: 1px solid #d1d5db;
+  border-radius: 12px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+.language-button {
+  border: none !important;
+  background: transparent !important;
+  color: #166534 !important;
+  padding: 7px 14px !important;
+  border-radius: 8px !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  cursor: pointer;
+  min-width: 65px;
+  transition: all 0.2s ease;
+}
+
+.language-button:hover {
+  background: #dcfce7 !important;
+}
+
+.language-button.active {
+  background: #15803d !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+}
+
+/* Mobile */
+@media (max-width: 600px) {
+  .language-switcher {
+    padding: 3px;
+    gap: 2px;
+  }
+
+  .language-button {
+    min-width: 55px;
+    padding: 6px 9px !important;
+    font-size: 12px !important;
+  }
+}
+/* =========================================
+   KISAN SETU - LIVE TOKEN STATUS
+   Add this block at the bottom of App.css
+========================================= */
+
+.live-token-card {
+  margin: 22px 0;
+  padding: 22px;
+  border: 1px solid rgba(35, 122, 62, 0.22);
+  border-radius: 18px;
+  background: linear-gradient(135deg, #ffffff, #f4fbf5);
+  box-shadow: 0 8px 28px rgba(30, 80, 40, 0.08);
+}
+
+.live-token-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.live-token-header h2 {
+  margin: 5px 0 0;
+}
+
+.live-token-subtitle {
+  margin: 6px 0 18px;
+  opacity: 0.72;
+}
+
+.live-status-main {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  border-radius: 12px;
+  background: #fff;
+  border: 1px solid rgba(35, 122, 62, 0.12);
+}
+
+.live-status-main > div {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.live-status-main strong {
+  font-size: 17px;
+}
+
+.live-status-main span:not(.live-status-dot) {
+  font-size: 13px;
+  opacity: 0.7;
+}
+
+.live-status-dot {
+  width: 12px;
+  height: 12px;
+  min-width: 12px;
+  border-radius: 50%;
+  background: #2e9d4d;
+  box-shadow: 0 0 0 5px rgba(46, 157, 77, 0.12);
+  animation: livePulse 1.8s infinite;
+}
+
+.live-timeline {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.live-timeline-step {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 58px;
+  padding: 10px;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.025);
+  opacity: 0.5;
+}
+
+.live-timeline-step.done {
+  opacity: 1;
+  background: rgba(46, 157, 77, 0.08);
+}
+
+.live-timeline-step > span {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.live-timeline-step.done > span {
+  border-color: rgba(46, 157, 77, 0.35);
+}
+
+.live-timeline-step div {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.live-timeline-step strong {
+  font-size: 13px;
+}
+
+.live-timeline-step small {
+  font-size: 11px;
+  opacity: 0.65;
+}
+
+.live-token-footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+  font-size: 12px;
+  opacity: 0.7;
+}
+
+.live-token-mini {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 14px 0;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: rgba(46, 157, 77, 0.08);
+  font-size: 13px;
+}
+
+@keyframes livePulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.18); opacity: 0.7; }
+}
+
+@media (max-width: 700px) {
+  .live-timeline {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .live-token-footer {
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 480px) {
+  .live-timeline {
+    grid-template-columns: 1fr;
+  }
+}

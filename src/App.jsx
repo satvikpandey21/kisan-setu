@@ -1,5 +1,23 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import "./App.css";
+import "./language-toggle.css";
+
+/* =========================================
+   CROP DATA
+========================================= */
+
+const crops = [
+  { name: "Wheat", hindi: "गेहूँ", emoji: "🌾" },
+{ name: "Rice", hindi: "धान", emoji: "🍚" },
+  { name: "Maize", hindi: "मक्का", emoji: "🌽" },
+  { name: "Mustard", hindi: "सरसों", emoji: "🌼" },
+  { name: "Potato", hindi: "आलू", emoji: "🥔" },
+  { name: "Gram", hindi: "चना", emoji: "🫘" },
+];
+
+/* =========================================
+   PROCUREMENT CENTRES
+========================================= */
 
 const centres = [
   {
@@ -30,6 +48,10 @@ const centres = [
     status: "Busy",
   },
 ];
+
+/* =========================================
+   INITIAL BUYER DEMANDS
+========================================= */
 
 const initialDemands = [
   {
@@ -64,6 +86,10 @@ const initialDemands = [
   },
 ];
 
+/* =========================================
+   INITIAL TOKENS
+========================================= */
+
 const initialTokens = [
   {
     id: "KIS-042",
@@ -91,25 +117,275 @@ const initialTokens = [
   },
 ];
 
+const translationsHi = {
+  "Connecting Farmers, Buyers & Procurement Centres": "किसानों, खरीदारों और खरीद केंद्रों को जोड़ना",
+  "Choose your role": "अपनी भूमिका चुनें",
+  "Select how you want to access the Kisan Setu platform.": "Kisan Setu प्लेटफ़ॉर्म का उपयोग करने के लिए अपनी भूमिका चुनें।",
+  "Farmer": "किसान",
+  "Sell your crop, compare options and book procurement tokens.": "अपनी फसल बेचें, विकल्पों की तुलना करें और खरीद टोकन बुक करें।",
+  "Procurement Officer": "खरीद अधिकारी",
+  "Manage token queue and crop procurement operations.": "टोकन कतार और फसल खरीद की प्रक्रिया प्रबंधित करें।",
+  "Verified Buyer": "सत्यापित खरीदार",
+  "Create crop demand and connect with farmers.": "फसल की मांग बनाएं और किसानों से जुड़ें।",
+  "Admin": "एडमिन",
+  "Manage users, verification and platform monitoring.": "यूज़र्स, सत्यापन और प्लेटफ़ॉर्म की निगरानी करें।",
+  "Secure access": "सुरक्षित प्रवेश",
+  "Each role has its own login and dashboard.": "हर भूमिका के लिए अलग लॉगिन और डैशबोर्ड है।",
+  "Back to roles": "भूमिका चयन पर वापस",
+  "Welcome, Farmer": "स्वागत है, किसान",
+  "Officer Login": "अधिकारी लॉगिन",
+  "Buyer Login": "खरीदार लॉगिन",
+  "Admin Login": "एडमिन लॉगिन",
+  "FARMER LOGIN": "किसान लॉगिन",
+  "PROCUREMENT OFFICER LOGIN": "खरीद अधिकारी लॉगिन",
+  "VERIFIED BUYER LOGIN": "सत्यापित खरीदार लॉगिन",
+  "ADMIN LOGIN": "एडमिन लॉगिन",
+  "Login to access your Kisan Setu dashboard.": "अपने Kisan Setu डैशबोर्ड को एक्सेस करने के लिए लॉगिन करें।",
+  "Farmer ID": "किसान ID",
+  "Officer ID": "अधिकारी ID",
+  "Buyer / Business ID": "खरीदार / बिज़नेस ID",
+  "Registered Mobile Number": "रजिस्टर्ड मोबाइल नंबर",
+  "Send OTP": "OTP भेजें",
+  "OTP sent to registered mobile number.": "रजिस्टर्ड मोबाइल नंबर पर OTP भेज दिया गया है।",
+  "Enter OTP": "OTP दर्ज करें",
+  "Verify OTP & Login": "OTP सत्यापित करें और लॉगिन करें",
+  "Change mobile number": "मोबाइल नंबर बदलें",
+  "Demo OTP:": "डेमो OTP:",
+  "Admin ID": "एडमिन ID",
+  "Password": "पासवर्ड",
+  "Login as Admin": "एडमिन के रूप में लॉगिन करें",
+  "Demo Admin ID:": "डेमो एडमिन ID:",
+  "This is a prototype login. Real authentication will be connected during backend integration.": "यह एक प्रोटोटाइप लॉगिन है। वास्तविक authentication backend integration के दौरान जोड़ा जाएगा।",
+  "FARMER DASHBOARD": "किसान डैशबोर्ड",
+  "Tell us about your crop to find the best selling option.": "बेहतर बिक्री विकल्प खोजने के लिए अपनी फसल की जानकारी दें।",
+  "🌾 Crop Details": "🌾 फसल की जानकारी",
+  "Select Crop": "फसल चुनें",
+  "Expected Quantity (Quintal)": "अनुमानित मात्रा (क्विंटल)",
+  "Compare Selling Options →": "बिक्री विकल्पों की तुलना करें →",
+  "💡 Kisan Setu": "💡 Kisan Setu",
+  "Government MSP aur verified private buyer demand ko compare karke farmer ko better option choose karne mein help karta hai.": "सरकारी MSP और सत्यापित निजी खरीदार की मांग की तुलना करके किसान को बेहतर विकल्प चुनने में मदद करता है।",
+  "SELLING OPTIONS": "बिक्री विकल्प",
+  "Compare government procurement with verified market demand.": "सरकारी खरीद और सत्यापित बाज़ार की मांग की तुलना करें।",
+  "Government MSP": "सरकारी MSP",
+  "Procurement Centre": "खरीद केंद्र",
+  "Estimated Value": "अनुमानित मूल्य",
+  "MSP price protected": "MSP मूल्य सुरक्षित",
+  "Token / queue required": "टोकन / कतार आवश्यक",
+  "Find Procurement Centre": "खरीद केंद्र खोजें",
+  "Verified Market": "सत्यापित बाज़ार",
+  "Private Buyer Demand": "निजी खरीदार की मांग",
+  "✓ Verified Buyers": "✓ सत्यापित खरीदार",
+  "+ ₹": "₹",
+  " possible upside": " तक अतिरिक्त लाभ संभव",
+  "View Buyer Demand": "खरीदार की मांग देखें",
+  "PROCUREMENT CENTRES": "खरीद केंद्र",
+  "Choose a nearby centre": "नज़दीकी केंद्र चुनें",
+  "Select a centre based on distance and current queue.": "दूरी और वर्तमान कतार के आधार पर केंद्र चुनें।",
+  "Available": "उपलब्ध",
+  "Busy": "व्यस्त",
+  "Waiting": "प्रतीक्षा",
+  "Processing": "प्रक्रिया में",
+  "Est. Wait": "अनुमानित प्रतीक्षा",
+  "Capacity": "क्षमता",
+  "Book Token": "टोकन बुक करें",
+  "TOKEN GENERATED": "टोकन जनरेट हो गया",
+  "Your procurement token is ready": "आपका खरीद टोकन तैयार है",
+  "Crop": "फसल",
+  "Quantity": "मात्रा",
+  "Centre": "केंद्र",
+  "Status": "स्थिति",
+  "⏱ Estimated waiting time": "⏱ अनुमानित प्रतीक्षा समय",
+  "Back to Farmer Dashboard": "किसान डैशबोर्ड पर वापस",
+  "VERIFIED BUYER DEMAND": "सत्यापित खरीदार की मांग",
+  "Available buyers": "उपलब्ध खरीदार",
+  "These buyers have active crop requirements.": "इन खरीदारों की वर्तमान फसल आवश्यकताएं हैं।",
+  "✓ Verified Buyer": "✓ सत्यापित खरीदार",
+  "Connect with Buyer": "खरीदार से जुड़ें",
+  "PROCUREMENT MANAGEMENT": "खरीद प्रबंधन",
+  "Officer Dashboard": "अधिकारी डैशबोर्ड",
+  "Manage procurement centre token queue.": "खरीद केंद्र की टोकन कतार प्रबंधित करें।",
+  "● LIVE": "● लाइव",
+  "Completed": "पूर्ण",
+  "Centre Capacity": "केंद्र क्षमता",
+  "🎫 Token Queue": "🎫 टोकन कतार",
+  "Refresh": "रिफ्रेश",
+  "Token": "टोकन",
+  "Action": "कार्रवाई",
+  "Start": "शुरू करें",
+  "Complete": "पूर्ण करें",
+  "📊 Centre Operations": "📊 केंद्र संचालन",
+  "Daily Capacity": "दैनिक क्षमता",
+  "Queue Load": "कतार लोड",
+  "VERIFIED BUYER": "सत्यापित खरीदार",
+  "Buyer Dashboard": "खरीदार डैशबोर्ड",
+  "Create demand and connect with farmers.": "मांग बनाएं और किसानों से जुड़ें।",
+  "✓ VERIFIED": "✓ सत्यापित",
+  "Active Demands": "सक्रिय मांग",
+  "Total Required": "कुल आवश्यक मात्रा",
+  "Avg. Rate": "औसत दर",
+  "➕ Create New Demand": "➕ नई मांग बनाएं",
+  "Tell farmers what crop you need.": "किसानों को बताएं कि आपको कौन-सी फसल चाहिए।",
+  "Required Quantity (Quintal)": "आवश्यक मात्रा (क्विंटल)",
+  "Offered Rate / Quintal": "प्रति क्विंटल प्रस्तावित दर",
+  "Location": "स्थान",
+  "Publish Demand": "मांग प्रकाशित करें",
+  "📋 Active Demands": "📋 सक्रिय मांग",
+  "Your current crop requirements.": "आपकी वर्तमान फसल आवश्यकताएं।",
+  "Remove": "हटाएं",
+  "PLATFORM ADMINISTRATION": "प्लेटफ़ॉर्म प्रशासन",
+  "Admin Dashboard": "एडमिन डैशबोर्ड",
+  "Monitor Kisan Setu users and operations.": "Kisan Setu यूज़र्स और संचालन की निगरानी करें।",
+  "● SYSTEM ONLINE": "● सिस्टम ऑनलाइन",
+  "Registered Farmers": "रजिस्टर्ड किसान",
+  "Verified Buyers": "सत्यापित खरीदार",
+  "Procurement Centres": "खरीद केंद्र",
+  "Pending Verification": "सत्यापन लंबित",
+  "Farmers": "किसान",
+  "Registered users": "रजिस्टर्ड यूज़र्स",
+  "Buyers": "खरीदार",
+  "Verified businesses": "सत्यापित व्यवसाय",
+  "Centres": "केंद्र",
+  "Active procurement centres": "सक्रिय खरीद केंद्र",
+  "Tokens Today": "आज के टोकन",
+  "Generated today": "आज जनरेट हुए",
+  "🔎 Buyer Verification": "🔎 खरीदार सत्यापन",
+  "Pending business verification requests.": "लंबित बिज़नेस सत्यापन अनुरोध।",
+  "Pending": "लंबित",
+  "Review": "समीक्षा करें",
+  "📈 Platform Overview": "📈 प्लेटफ़ॉर्म अवलोकन",
+  "Farmer Registration": "किसान पंजीकरण",
+  "Buyer Verification": "खरीदार सत्यापन",
+  "Centre Digitisation": "केंद्र डिजिटलीकरण",
+  "Logout": "लॉगआउट",
+  "Roles": "भूमिकाएं",
+  "← Back": "← वापस",
+  "← Back to roles": "← भूमिका चयन पर वापस",
+  "© 2026 Kisan Setu • Smart Agriculture Procurement Platform": "© 2026 Kisan Setu • स्मार्ट कृषि खरीद प्लेटफ़ॉर्म",
+  "Enter Farmer ID": "किसान ID दर्ज करें",
+  "Enter Officer ID": "अधिकारी ID दर्ज करें",
+  "Enter Buyer ID": "खरीदार ID दर्ज करें",
+  "10 digit mobile number": "10 अंकों का मोबाइल नंबर",
+  "Enter 6 digit OTP": "6 अंकों का OTP दर्ज करें",
+  "Enter Admin ID": "एडमिन ID दर्ज करें",
+  "Enter password": "पासवर्ड दर्ज करें",
+  "Example: 50": "उदाहरण: 50",
+  "Example: 100": "उदाहरण: 100",
+  "Example: 2700": "उदाहरण: 2700",
+  "Example: Lucknow": "उदाहरण: लखनऊ",
+  "Please enter your ID.": "कृपया अपनी ID दर्ज करें।",
+  "Please enter a valid 10-digit mobile number.": "कृपया मान्य 10 अंकों का मोबाइल नंबर दर्ज करें।",
+  "Demo OTP: 123456": "डेमो OTP: 123456",
+  "Invalid OTP. Use Demo OTP: 123456": "गलत OTP। डेमो OTP इस्तेमाल करें: 123456",
+  "Please select a crop.": "कृपया फसल चुनें।",
+  "Please enter a valid quantity.": "कृपया मान्य मात्रा दर्ज करें।",
+  "Please fill all demand details.": "कृपया मांग की सभी जानकारी भरें।",
+  "Demand created successfully.": "मांग सफलतापूर्वक बनाई गई।",
+  "Queue refreshed": "कतार रिफ्रेश हो गई।",
+  "Buyer verification approved": "खरीदार का सत्यापन स्वीकृत हो गया।",
+  "Connection request sent to {buyer}": "{buyer} को कनेक्शन अनुरोध भेज दिया गया।",
+  "Invalid Admin ID or password.\\n\\nDemo:\\nID: ADMIN001\\nPassword: admin123": "गलत Admin ID या पासवर्ड।\n\nडेमो:\nID: ADMIN001\nपासवर्ड: admin123",
+  "possible upside": "तक अतिरिक्त लाभ संभव",
+  "⚠️ Token / queue required": "⚠️ टोकन / कतार आवश्यक",
+  "✔ MSP price protected": "✔ MSP मूल्य सुरक्षित",
+  "🌾 Kisan Setu": "🌾 Kisan Setu",
+  "🔐 Secure access": "🔐 सुरक्षित प्रवेश",
+  "KISAN SETU PLATFORM": "KISAN SETU प्लेटफ़ॉर्म",
+  "/quintal": "/क्विंटल",
+  "LIVE TOKEN STATUS": "लाइव टोकन स्थिति",
+  "Your procurement journey is updated in real time.": "आपकी खरीद प्रक्रिया रियल टाइम में अपडेट होती है।",
+  "Token Booked": "टोकन बुक हो गया",
+  "Entry Completed": "प्रवेश पूरा हो गया",
+  "Waiting for Procurement": "खरीद की प्रतीक्षा",
+  "Procurement Started": "खरीद शुरू हो गई",
+  "Quality Check": "गुणवत्ता जांच",
+  "Weighing": "वजन किया जा रहा है",
+  "Procurement Completed": "खरीद पूरी हो गई",
+  "Farmers ahead": "आपसे आगे किसान",
+  "Last updated": "अंतिम अपडेट",
+  "Live update": "लाइव अपडेट",
+  "Mark Entry": "प्रवेश दर्ज करें",
+  "Start Procurement": "खरीद शुरू करें",
+  "Start Quality Check": "गुणवत्ता जांच शुरू करें",
+  "Start Weighing": "वजन शुरू करें"
+};
+
+/* =========================================
+   MAIN APP
+========================================= */
+
 function App() {
-  // =========================
-  // MAIN APP STATE
-  // =========================
+
+  /* =========================================
+     LANGUAGE
+     ========================================= */
+
+  const [language, setLanguage] = useState(
+    () => localStorage.getItem("kisanSetuLanguage") || "en"
+  );
+
+  const changeLanguage = (lang) => {
+    setLanguage(lang);
+    localStorage.setItem("kisanSetuLanguage", lang);
+  };
+
+  const t = (text) => {
+    if (language === "en") return text;
+    const hi = translationsHi[text];
+    return hi || text;
+  };
+
+  /* =========================================
+     MAIN SCREEN STATE
+  ========================================= */
 
   const [screen, setScreen] = useState("roles");
 
-  // Farmer crop flow
+  /* =========================================
+     FARMER CROP FLOW
+  ========================================= */
+
   const [crop, setCrop] = useState("");
   const [quantity, setQuantity] = useState("");
   const [selectedCentre, setSelectedCentre] = useState(null);
 
-  // Shared data
-  const [demands, setDemands] = useState(initialDemands);
-  const [tokens, setTokens] = useState(initialTokens);
+  /* =========================================
+     SHARED DATA
+  ========================================= */
 
-  // =========================
-  // AUTH STATE
-  // =========================
+  const [demands, setDemands] = useState(initialDemands);
+  const [tokens, setTokens] = useState(() => {
+    try {
+      const saved = localStorage.getItem("kisanSetuTokens");
+      return saved ? JSON.parse(saved) : initialTokens;
+    } catch {
+      return initialTokens;
+    }
+  });
+
+  useEffect(() => {
+    localStorage.setItem("kisanSetuTokens", JSON.stringify(tokens));
+  }, [tokens]);
+
+  useEffect(() => {
+    const handleStorage = (event) => {
+      if (event.key !== "kisanSetuTokens" || !event.newValue) return;
+      try {
+        setTokens(JSON.parse(event.newValue));
+      } catch {
+        // Ignore malformed storage data.
+      }
+    };
+
+    window.addEventListener("storage", handleStorage);
+
+    return () => {
+      window.removeEventListener("storage", handleStorage);
+    };
+  }, []);
+
+  /* =========================================
+     AUTH STATE
+  ========================================= */
 
   const [loginRole, setLoginRole] = useState("");
   const [loggedInRole, setLoggedInRole] = useState("");
@@ -121,18 +397,25 @@ function App() {
 
   const [adminPassword, setAdminPassword] = useState("");
 
-  // Buyer form
+  /* =========================================
+     BUYER FORM
+  ========================================= */
+
   const [buyerCrop, setBuyerCrop] = useState("");
   const [buyerQuantity, setBuyerQuantity] = useState("");
   const [buyerRate, setBuyerRate] = useState("");
   const [buyerLocation, setBuyerLocation] = useState("");
 
+  /* =========================================
+     DEMO RATES
+  ========================================= */
+
   const governmentRate = 2585;
   const marketRate = 2700;
 
-  // =========================
-  // AUTH FUNCTIONS
-  // =========================
+  /* =========================================
+     AUTH FUNCTIONS
+  ========================================= */
 
   const resetLoginFields = () => {
     setLoginId("");
@@ -150,23 +433,23 @@ function App() {
 
   const sendLoginOtp = () => {
     if (!loginId.trim()) {
-      alert("Please enter your ID.");
+      alert(t("Please enter your ID."));
       return;
     }
 
     if (!/^\d{10}$/.test(loginMobile)) {
-      alert("Please enter a valid 10-digit mobile number.");
+      alert(t("Please enter a valid 10-digit mobile number."));
       return;
     }
 
     setOtpSent(true);
 
-    alert("Demo OTP: 123456");
+    alert(t("Demo OTP: 123456"));
   };
 
   const verifyLoginOtp = () => {
     if (loginOtp !== "123456") {
-      alert("Invalid OTP. Use Demo OTP: 123456");
+      alert(t("Invalid OTP. Use Demo OTP: 123456"));
       return;
     }
 
@@ -183,7 +466,9 @@ function App() {
 
   const adminLogin = () => {
     if (loginId !== "ADMIN001" || adminPassword !== "admin123") {
-      alert("Invalid Admin ID or password.\n\nDemo:\nID: ADMIN001\nPassword: admin123");
+      alert(
+        t("Invalid Admin ID or password.\\n\\nDemo:\\nID: ADMIN001\\nPassword: admin123")
+      );
       return;
     }
 
@@ -198,18 +483,18 @@ function App() {
     setScreen("roles");
   };
 
-  // =========================
-  // FARMER FLOW
-  // =========================
+  /* =========================================
+     FARMER FUNCTIONS
+  ========================================= */
 
   const goToCompare = () => {
     if (!crop) {
-      alert("Please select a crop.");
+      alert(t("Please select a crop."));
       return;
     }
 
     if (!quantity || Number(quantity) <= 0) {
-      alert("Please enter a valid quantity.");
+      alert(t("Please enter a valid quantity."));
       return;
     }
 
@@ -223,6 +508,7 @@ function App() {
   const generateToken = (centre) => {
     setSelectedCentre(centre);
 
+    const now = new Date().toISOString();
     const newToken = {
       id: `KIS-${String(45 + tokens.length).padStart(3, "0")}`,
       farmer: loginId || "Demo Farmer",
@@ -230,20 +516,22 @@ function App() {
       quantity: Number(quantity),
       centre: centre.name,
       status: "Waiting",
+      createdAt: now,
+      updatedAt: now,
+      history: [{ status: "Token Booked", time: now }],
     };
 
     setTokens((prev) => [...prev, newToken]);
-
     setScreen("token");
   };
 
-  // =========================
-  // BUYER FUNCTIONS
-  // =========================
+  /* =========================================
+     BUYER FUNCTIONS
+  ========================================= */
 
   const createDemand = () => {
     if (!buyerCrop || !buyerQuantity || !buyerRate || !buyerLocation) {
-      alert("Please fill all demand details.");
+      alert(t("Please fill all demand details."));
       return;
     }
 
@@ -265,61 +553,181 @@ function App() {
     setBuyerRate("");
     setBuyerLocation("");
 
-    alert("Demand created successfully.");
+    alert(t("Demand created successfully."));
   };
 
   const removeDemand = (id) => {
     setDemands((prev) => prev.filter((item) => item.id !== id));
   };
 
-  // =========================
-  // OFFICER FUNCTIONS
-  // =========================
+  /* =========================================
+     OFFICER FUNCTIONS
+  ========================================= */
 
   const updateTokenStatus = (tokenId) => {
+    const statusFlow = {
+      Waiting: { next: "Entry Completed", history: "Entry Completed" },
+      "Entry Completed": { next: "Processing", history: "Procurement Started" },
+      Processing: { next: "Quality Check", history: "Quality Check" },
+      "Quality Check": { next: "Weighing", history: "Weighing" },
+      Weighing: { next: "Completed", history: "Procurement Completed" },
+    };
+
     setTokens((prev) =>
       prev.map((token) => {
         if (token.id !== tokenId) return token;
-
-        if (token.status === "Waiting") {
-          return { ...token, status: "Processing" };
-        }
-
-        if (token.status === "Processing") {
-          return { ...token, status: "Completed" };
-        }
-
-        return token;
+        const transition = statusFlow[token.status];
+        if (!transition) return token;
+        const now = new Date().toISOString();
+        return {
+          ...token,
+          status: transition.next,
+          updatedAt: now,
+          history: [
+            ...(token.history || []),
+            { status: transition.history, time: now },
+          ],
+        };
       })
     );
   };
 
-  // =========================
-  // HEADER
-  // =========================
+  /* =========================================
+     LIVE TOKEN HELPERS
+  ========================================= */
+
+  const farmerToken = [...tokens]
+    .reverse()
+    .find((token) => token.farmer === (loginId || "Demo Farmer"));
+
+  const getTokenStatusLabel = (status) => {
+    const labels = {
+      Waiting: "Token Booked",
+      "Entry Completed": "Entry Completed",
+      Processing: "Procurement Started",
+      "Quality Check": "Quality Check",
+      Weighing: "Weighing",
+      Completed: "Procurement Completed",
+    };
+    return labels[status] || status;
+  };
+
+  const getNextOfficerAction = (status) => {
+    const actions = {
+      Waiting: "Mark Entry",
+      "Entry Completed": "Start Procurement",
+      Processing: "Start Quality Check",
+      "Quality Check": "Start Weighing",
+      Weighing: "Complete",
+    };
+    return actions[status] || "Complete";
+  };
+
+  const getQueueAhead = (token) => {
+    if (!token) return 0;
+    const activeAtCentre = tokens.filter(
+      (item) => item.centre === token.centre && item.status !== "Completed"
+    );
+    const index = activeAtCentre.findIndex((item) => item.id === token.id);
+    return index >= 0 ? index : 0;
+  };
+
+  /* =========================================
+     ROLE NAME
+  ========================================= */
 
   const getRoleName = () => {
-    if (loggedInRole === "farmer") return "Farmer";
-    if (loggedInRole === "officer") return "Procurement Officer";
-    if (loggedInRole === "buyer") return "Verified Buyer";
-    if (loggedInRole === "admin") return "Admin";
+    if (loggedInRole === "farmer") return t("Farmer");
+    if (loggedInRole === "officer") return t("Procurement Officer");
+    if (loggedInRole === "buyer") return t("Verified Buyer");
+    if (loggedInRole === "admin") return t("Admin");
+
     return "";
   };
+
+  /* =========================================
+     CROP CARD COMPONENT
+  ========================================= */
+
+  const CropCards = ({ value, onChange }) => {
+    return (
+      <div className="crop-selection">
+        <label>{t("Select Crop")}</label>
+
+        <div className="crop-grid">
+          {crops.map((item) => (
+            <button
+              type="button"
+              key={item.name}
+              className={`crop-card ${
+                value === item.name ? "selected" : ""
+              }`}
+              onClick={() => onChange(item.name)}
+            >
+              <span className="crop-emoji">
+                {item.emoji}
+              </span>
+
+              <span className="crop-name">
+                {item.name}
+              </span>
+
+              <span className="crop-hindi">
+                {item.hindi}
+              </span>
+
+              {value === item.name && (
+                <span className="crop-check">
+                  ✓
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
+  /* =========================================
+     RETURN
+  ========================================= */
 
   return (
     <div className="app">
 
-      {/* ================= HEADER ================= */}
+      {/* =========================================
+          HEADER
+      ========================================= */}
 
       <header className="header">
+
         <div>
-          <div className="logo">🌾 Kisan Setu</div>
+          <div className="logo">
+            {t("🌾 Kisan Setu")}
+          </div>
+
           <div className="tagline">
-            Connecting Farmers, Buyers & Procurement Centres
+            {t("Connecting Farmers, Buyers & Procurement Centres")}
           </div>
         </div>
 
+        <div className="language-switcher">
+          <button
+            className={`language-button ${language === "en" ? "active" : ""}`}
+            onClick={() => changeLanguage("en")}
+          >
+            English
+          </button>
+          <button
+            className={`language-button ${language === "hi" ? "active" : ""}`}
+            onClick={() => changeLanguage("hi")}
+          >
+            हिंदी
+          </button>
+        </div>
+
         <div className="header-actions">
+
           {loggedInRole && (
             <>
               <span className="logged-role">
@@ -330,7 +738,7 @@ function App() {
                 className="secondary-button header-button"
                 onClick={logout}
               >
-                Logout
+                {t("Logout")}
               </button>
             </>
           )}
@@ -340,24 +748,37 @@ function App() {
               className="secondary-button header-button"
               onClick={() => setScreen("roles")}
             >
-              Roles
+              {t("Roles")}
             </button>
           )}
+
         </div>
+
       </header>
 
-      {/* ================= ROLE SELECTION ================= */}
+      {/* =========================================
+          ROLE SELECTION
+      ========================================= */}
 
       {screen === "roles" && (
         <main className="container">
+
           <div className="welcome-card">
-            <div className="eyebrow">KISAN SETU PLATFORM</div>
 
-            <h1>Choose your role</h1>
+            <div>
+              <div className="eyebrow">
+                {t("KISAN SETU PLATFORM")}
+              </div>
 
-            <p>
-              Select how you want to access the Kisan Setu platform.
-            </p>
+              <h1>
+                {t("Choose your role")}
+              </h1>
+
+              <p>
+                {t("Select how you want to access the Kisan Setu platform.")}
+              </p>
+            </div>
+
           </div>
 
           <div className="role-grid">
@@ -366,12 +787,15 @@ function App() {
               className="role-button"
               onClick={() => chooseRole("farmer")}
             >
-              <div className="role-icon">👨‍🌾</div>
+              <div className="role-icon">
+                👨‍🌾
+              </div>
 
               <div>
-                <h3>Farmer</h3>
+                <h3>{t("Farmer")}</h3>
+
                 <p>
-                  Sell your crop, compare options and book procurement tokens.
+                  {t("Sell your crop, compare options and book procurement tokens.")}
                 </p>
               </div>
             </button>
@@ -380,12 +804,15 @@ function App() {
               className="role-button"
               onClick={() => chooseRole("officer")}
             >
-              <div className="role-icon">🧑‍💼</div>
+              <div className="role-icon">
+                🧑‍💼
+              </div>
 
               <div>
-                <h3>Procurement Officer</h3>
+                <h3>{t("Procurement Officer")}</h3>
+
                 <p>
-                  Manage token queue and crop procurement operations.
+                  {t("Manage token queue and crop procurement operations.")}
                 </p>
               </div>
             </button>
@@ -394,12 +821,15 @@ function App() {
               className="role-button"
               onClick={() => chooseRole("buyer")}
             >
-              <div className="role-icon">🏢</div>
+              <div className="role-icon">
+                🏢
+              </div>
 
               <div>
-                <h3>Verified Buyer</h3>
+                <h3>{t("Verified Buyer")}</h3>
+
                 <p>
-                  Create crop demand and connect with farmers.
+                  {t("Create crop demand and connect with farmers.")}
                 </p>
               </div>
             </button>
@@ -408,12 +838,15 @@ function App() {
               className="role-button"
               onClick={() => chooseRole("admin")}
             >
-              <div className="role-icon">👑</div>
+              <div className="role-icon">
+                👑
+              </div>
 
               <div>
-                <h3>Admin</h3>
+                <h3>{t("Admin")}</h3>
+
                 <p>
-                  Manage users, verification and platform monitoring.
+                  {t("Manage users, verification and platform monitoring.")}
                 </p>
               </div>
             </button>
@@ -421,15 +854,23 @@ function App() {
           </div>
 
           <div className="info-card">
-            <strong>🔐 Secure access</strong>
+
+            <strong>
+              {t("🔐 Secure access")}
+            </strong>
+
             <p>
-              Each role has its own login and dashboard.
+              {t("Each role has its own login and dashboard.")}
             </p>
+
           </div>
+
         </main>
       )}
 
-      {/* ================= LOGIN ================= */}
+      {/* =========================================
+          LOGIN
+      ========================================= */}
 
       {screen === "login" && (
         <main className="container login-container">
@@ -441,45 +882,54 @@ function App() {
               setScreen("roles");
             }}
           >
-            ← Back to roles
+            {t("← Back to roles")}
           </button>
 
           <div className="login-card">
 
             <div className="login-icon">
+
               {loginRole === "farmer" && "👨‍🌾"}
               {loginRole === "officer" && "🧑‍💼"}
               {loginRole === "buyer" && "🏢"}
               {loginRole === "admin" && "👑"}
+
             </div>
 
             <div className="eyebrow">
-              {loginRole === "farmer" && "FARMER LOGIN"}
-              {loginRole === "officer" && "PROCUREMENT OFFICER LOGIN"}
-              {loginRole === "buyer" && "VERIFIED BUYER LOGIN"}
-              {loginRole === "admin" && "ADMIN LOGIN"}
+
+              {loginRole === "farmer" && t("FARMER LOGIN")}
+              {loginRole === "officer" && t("PROCUREMENT OFFICER LOGIN")}
+              {loginRole === "buyer" && t("VERIFIED BUYER LOGIN")}
+              {loginRole === "admin" && t("ADMIN LOGIN")}
+
             </div>
 
             <h1>
-              {loginRole === "farmer" && "Welcome, Farmer"}
-              {loginRole === "officer" && "Officer Login"}
-              {loginRole === "buyer" && "Buyer Login"}
-              {loginRole === "admin" && "Admin Login"}
+
+              {loginRole === "farmer" && t("Welcome, Farmer")}
+              {loginRole === "officer" && t("Officer Login")}
+              {loginRole === "buyer" && t("Buyer Login")}
+              {loginRole === "admin" && t("Admin Login")}
+
             </h1>
 
             <p className="login-subtitle">
-              Login to access your Kisan Setu dashboard.
+              {t("Login to access your Kisan Setu dashboard.")}
             </p>
 
-            {/* FARMER / OFFICER / BUYER LOGIN */}
+            {/* FARMER / OFFICER / BUYER */}
 
             {loginRole !== "admin" && (
               <>
                 <div className="login-field">
+
                   <label>
+
                     {loginRole === "farmer" && "Farmer ID"}
                     {loginRole === "officer" && "Officer ID"}
                     {loginRole === "buyer" && "Buyer / Business ID"}
+
                   </label>
 
                   <input
@@ -492,17 +942,23 @@ function App() {
                         : "Enter Buyer ID"
                     }
                     value={loginId}
-                    onChange={(e) => setLoginId(e.target.value)}
+                    onChange={(e) =>
+                      setLoginId(e.target.value)
+                    }
                   />
+
                 </div>
 
                 <div className="login-field">
-                  <label>Registered Mobile Number</label>
+
+                  <label>
+                    {t("Registered Mobile Number")}
+                  </label>
 
                   <input
                     type="tel"
                     maxLength="10"
-                    placeholder="10 digit mobile number"
+                    placeholder={t("10 digit mobile number")}
                     value={loginMobile}
                     onChange={(e) =>
                       setLoginMobile(
@@ -510,6 +966,7 @@ function App() {
                       )
                     }
                   />
+
                 </div>
 
                 {!otpSent ? (
@@ -517,22 +974,25 @@ function App() {
                     className="primary-button"
                     onClick={sendLoginOtp}
                   >
-                    Send OTP
+                    {t("Send OTP")}
                   </button>
                 ) : (
                   <>
                     <div className="otp-message">
-                      OTP sent to registered mobile number.
+                      {t("OTP sent to registered mobile number.")}
                     </div>
 
                     <div className="login-field">
-                      <label>Enter OTP</label>
+
+                      <label>
+                        {t("Enter OTP")}
+                      </label>
 
                       <input
                         className="otp-input"
                         type="text"
                         maxLength="6"
-                        placeholder="Enter 6 digit OTP"
+                        placeholder={t("Enter 6 digit OTP")}
                         value={loginOtp}
                         onChange={(e) =>
                           setLoginOtp(
@@ -540,13 +1000,14 @@ function App() {
                           )
                         }
                       />
+
                     </div>
 
                     <button
                       className="primary-button"
                       onClick={verifyLoginOtp}
                     >
-                      Verify OTP & Login
+                      {t("Verify OTP & Login")}
                     </button>
 
                     <button
@@ -556,13 +1017,13 @@ function App() {
                         setLoginOtp("");
                       }}
                     >
-                      Change mobile number
+                      {t("Change mobile number")}
                     </button>
                   </>
                 )}
 
                 <div className="demo-otp">
-                  Demo OTP: <strong>123456</strong>
+                  {t("Demo OTP:")} <strong>123456</strong>
                 </div>
               </>
             )}
@@ -572,39 +1033,58 @@ function App() {
             {loginRole === "admin" && (
               <>
                 <div className="login-field">
-                  <label>Admin ID</label>
+
+                  <label>
+                    {t("Admin ID")}
+                  </label>
 
                   <input
                     type="text"
-                    placeholder="Enter Admin ID"
+                    placeholder={t("Enter Admin ID")}
                     value={loginId}
-                    onChange={(e) => setLoginId(e.target.value)}
+                    onChange={(e) =>
+                      setLoginId(e.target.value)
+                    }
                   />
+
                 </div>
 
                 <div className="login-field">
-                  <label>Password</label>
+
+                  <label>
+                    {t("Password")}
+                  </label>
 
                   <input
                     type="password"
-                    placeholder="Enter password"
+                    placeholder={t("Enter password")}
                     value={adminPassword}
                     onChange={(e) =>
                       setAdminPassword(e.target.value)
                     }
                   />
+
                 </div>
 
                 <button
                   className="primary-button"
                   onClick={adminLogin}
                 >
-                  Login as Admin
+                  {t("Login as Admin")}
                 </button>
 
                 <div className="demo-otp">
-                  <div>Demo Admin ID: <strong>ADMIN001</strong></div>
-                  <div>Password: <strong>admin123</strong></div>
+
+                  <div>
+                    Demo Admin ID:{" "}
+                    <strong>ADMIN001</strong>
+                  </div>
+
+                  <div>
+                    Password:{" "}
+                    <strong>admin123</strong>
+                  </div>
+
                 </div>
               </>
             )}
@@ -615,58 +1095,129 @@ function App() {
             </div>
 
           </div>
+
         </main>
       )}
 
-      {/* ================= FARMER HOME ================= */}
+      {/* =========================================
+          FARMER HOME
+      ========================================= */}
 
       {screen === "home" && loggedInRole === "farmer" && (
         <main className="container">
 
           <div className="welcome-card">
-            <div className="eyebrow">FARMER DASHBOARD</div>
 
-            <h1>
-              Welcome, {loginId || "Farmer"} 👨‍🌾
-            </h1>
+            <div>
 
-            <p>
-              Tell us about your crop to find the best selling option.
-            </p>
+              <div className="eyebrow">
+                {t("FARMER DASHBOARD")}
+              </div>
+
+              <h1>
+                Welcome, {loginId || "Farmer"} 👨‍🌾
+              </h1>
+
+              <p>
+                {t("Tell us about your crop to find the best selling option.")}
+              </p>
+
+            </div>
+
           </div>
+
+          {farmerToken && (
+            <div className="live-token-card">
+              <div className="live-token-header">
+                <div>
+                  <div className="eyebrow">{t("LIVE TOKEN STATUS")}</div>
+                  <h2>🎫 {farmerToken.id}</h2>
+                </div>
+                <span className="live-badge">{t("● LIVE")}</span>
+              </div>
+
+              <p className="live-token-subtitle">
+                {t("Your procurement journey is updated in real time.")}
+              </p>
+
+              <div className="live-status-main">
+                <span className="live-status-dot"></span>
+                <div>
+                  <strong>{t(getTokenStatusLabel(farmerToken.status))}</strong>
+                  <span>
+                    {t("Farmers ahead")}: {getQueueAhead(farmerToken)}
+                  </span>
+                </div>
+              </div>
+
+              <div className="live-timeline">
+                {[
+                  "Token Booked",
+                  "Entry Completed",
+                  "Procurement Started",
+                  "Quality Check",
+                  "Weighing",
+                  "Procurement Completed",
+                ].map((step, index) => {
+                  const history = farmerToken.history || [];
+                  const reached = index === 0 || history.some((item) => item.status === step);
+                  const event = history.find((item) => item.status === step);
+
+                  return (
+                    <div className={`live-timeline-step ${reached ? "done" : ""}`} key={step}>
+                      <span>{reached ? "✓" : index + 1}</span>
+                      <div>
+                        <strong>{t(step)}</strong>
+                        {event && (
+                          <small>
+                            {new Date(event.time).toLocaleTimeString([], {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </small>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="live-token-footer">
+                <span>
+                  {t("Last updated")}: {new Date(
+                    farmerToken.updatedAt || farmerToken.createdAt
+                  ).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                </span>
+                <span>📍 {farmerToken.centre}</span>
+              </div>
+            </div>
+          )}
 
           <div className="card">
 
-            <h2>🌾 Crop Details</h2>
+            <h2>
+              {t("🌾 Crop Details")}
+            </h2>
 
-            <div className="form-grid">
+            <CropCards
+              value={crop}
+              onChange={setCrop}
+            />
 
-              <div className="login-field">
-                <label>Select Crop</label>
+            <div className="login-field">
 
-                <select
-                  value={crop}
-                  onChange={(e) => setCrop(e.target.value)}
-                >
-                  <option value="">Select crop</option>
-                  <option value="Wheat">Wheat</option>
-                  <option value="Rice">Rice</option>
-                  <option value="Maize">Maize</option>
-                  <option value="Mustard">Mustard</option>
-                  <option value="Potato">Potato</option>
-                </select>
-              </div>
+              <label>
+                {t("Expected Quantity (Quintal)")}
+              </label>
 
-              <div className="login-field">
-                <label>Expected Quantity (Quintal)</label>
-
-                <input
-                  type="number"
-                  placeholder="Example: 50"
-                  value={quantity}
-                  onChange={(e) => setQuantity(e.target.value)}
-                />
-              </div>
+              <input
+                type="number"
+                placeholder={t("Example: 50")}
+                value={quantity}
+                onChange={(e) =>
+                  setQuantity(e.target.value)
+                }
+              />
 
             </div>
 
@@ -674,24 +1225,30 @@ function App() {
               className="primary-button"
               onClick={goToCompare}
             >
-              Compare Selling Options →
+              {t("Compare Selling Options →")}
             </button>
 
           </div>
 
           <div className="info-card">
-            <strong>💡 Kisan Setu</strong>
+
+            <strong>
+              {t("💡 Kisan Setu")}
+            </strong>
 
             <p>
               Government MSP aur verified private buyer demand ko compare
               karke farmer ko better option choose karne mein help karta hai.
             </p>
+
           </div>
 
         </main>
       )}
 
-      {/* ================= COMPARE ================= */}
+      {/* =========================================
+          COMPARISON
+      ========================================= */}
 
       {screen === "compare" && loggedInRole === "farmer" && (
         <main className="container">
@@ -700,19 +1257,27 @@ function App() {
             className="back-button"
             onClick={() => setScreen("home")}
           >
-            ← Back
+            {t("← Back")}
           </button>
 
           <div className="welcome-card">
-            <div className="eyebrow">SELLING OPTIONS</div>
 
-            <h1>
-              {crop} • {quantity} Quintal
-            </h1>
+            <div>
 
-            <p>
-              Compare government procurement with verified market demand.
-            </p>
+              <div className="eyebrow">
+                {t("SELLING OPTIONS")}
+              </div>
+
+              <h1>
+                {crop} • {quantity} Quintal
+              </h1>
+
+              <p>
+                {t("Compare government procurement with verified market demand.")}
+              </p>
+
+            </div>
+
           </div>
 
           <div className="comparison">
@@ -722,41 +1287,58 @@ function App() {
             <div className="option-card government">
 
               <div className="option-header">
-                <span className="option-icon">🏛️</span>
+
+                <span className="option-icon">
+                  🏛️
+                </span>
 
                 <div>
-                  <h2>Government MSP</h2>
-                  <span>Procurement Centre</span>
+
+                  <h2>
+                    {t("Government MSP")}
+                  </h2>
+
+                  <span>
+                    {t("Procurement Centre")}
+                  </span>
+
                 </div>
+
               </div>
 
               <div className="price">
                 ₹{governmentRate.toLocaleString()}
-                <span>/quintal</span>
+                <span>{t("/quintal")}</span>
               </div>
 
               <div className="total">
-                Estimated Value
+
+                <span>
+                  {t("Estimated Value")}
+                </span>
+
                 <strong>
                   ₹{(
-                    governmentRate * Number(quantity || 0)
+                    governmentRate *
+                    Number(quantity || 0)
                   ).toLocaleString()}
                 </strong>
+
               </div>
 
               <div className="profit">
-                ✔ MSP price protected
+                {t("✔ MSP price protected")}
               </div>
 
               <div className="warning">
-                ⚠️ Token / queue required
+                {t("⚠️ Token / queue required")}
               </div>
 
               <button
                 className="primary-button"
                 onClick={selectGovernment}
               >
-                Find Procurement Centre
+                {t("Find Procurement Centre")}
               </button>
 
             </div>
@@ -766,30 +1348,47 @@ function App() {
             <div className="option-card market">
 
               <div className="option-header">
-                <span className="option-icon">🏢</span>
+
+                <span className="option-icon">
+                  🏢
+                </span>
 
                 <div>
-                  <h2>Verified Market</h2>
-                  <span>Private Buyer Demand</span>
+
+                  <h2>
+                    {t("Verified Market")}
+                  </h2>
+
+                  <span>
+                    {t("Private Buyer Demand")}
+                  </span>
+
                 </div>
+
               </div>
 
               <div className="verified">
-                ✓ Verified Buyers
+                {t("✓ Verified Buyers")}
               </div>
 
               <div className="price">
                 ₹{marketRate.toLocaleString()}
-                <span>/quintal</span>
+                <span>{t("/quintal")}</span>
               </div>
 
               <div className="total">
-                Estimated Value
+
+                <span>
+                  {t("Estimated Value")}
+                </span>
+
                 <strong>
                   ₹{(
-                    marketRate * Number(quantity || 0)
+                    marketRate *
+                    Number(quantity || 0)
                   ).toLocaleString()}
                 </strong>
+
               </div>
 
               <div className="profit">
@@ -803,7 +1402,7 @@ function App() {
                 className="secondary-button"
                 onClick={() => setScreen("market")}
               >
-                View Buyer Demand
+                {t("View Buyer Demand")}
               </button>
 
             </div>
@@ -813,7 +1412,9 @@ function App() {
         </main>
       )}
 
-      {/* ================= CENTRES ================= */}
+      {/* =========================================
+          PROCUREMENT CENTRES
+      ========================================= */}
 
       {screen === "centres" && loggedInRole === "farmer" && (
         <main className="container">
@@ -822,17 +1423,27 @@ function App() {
             className="back-button"
             onClick={() => setScreen("compare")}
           >
-            ← Back
+            {t("← Back")}
           </button>
 
           <div className="welcome-card">
-            <div className="eyebrow">PROCUREMENT CENTRES</div>
 
-            <h1>Choose a nearby centre</h1>
+            <div>
 
-            <p>
-              Select a centre based on distance and current queue.
-            </p>
+              <div className="eyebrow">
+                {t("PROCUREMENT CENTRES")}
+              </div>
+
+              <h1>
+                {t("Choose a nearby centre")}
+              </h1>
+
+              <p>
+                {t("Select a centre based on distance and current queue.")}
+              </p>
+
+            </div>
+
           </div>
 
           <div className="centre-list">
@@ -846,8 +1457,15 @@ function App() {
                 <div className="centre-header">
 
                   <div>
-                    <h2>{centre.name}</h2>
-                    <p>📍 {centre.distance}</p>
+
+                    <h2>
+                      {centre.name}
+                    </h2>
+
+                    <p>
+                      📍 {centre.distance}
+                    </p>
+
                   </div>
 
                   <span
@@ -857,7 +1475,7 @@ function App() {
                         : "busy"
                     }`}
                   >
-                    {centre.status}
+                    {t(centre.status)}
                   </span>
 
                 </div>
@@ -865,23 +1483,39 @@ function App() {
                 <div className="stats">
 
                   <div>
-                    <strong>{centre.waiting}</strong>
-                    <span>Waiting</span>
+                    <strong>
+                      {centre.waiting}
+                    </strong>
+                    <span>
+                      {t("Waiting")}
+                    </span>
                   </div>
 
                   <div>
-                    <strong>{centre.processing}</strong>
-                    <span>Processing</span>
+                    <strong>
+                      {centre.processing}
+                    </strong>
+                    <span>
+                      {t("Processing")}
+                    </span>
                   </div>
 
                   <div>
-                    <strong>{centre.waitTime}</strong>
-                    <span>Est. Wait</span>
+                    <strong>
+                      {centre.waitTime}
+                    </strong>
+                    <span>
+                      {t("Est. Wait")}
+                    </span>
                   </div>
 
                   <div>
-                    <strong>{centre.capacity}%</strong>
-                    <span>Capacity</span>
+                    <strong>
+                      {centre.capacity}%
+                    </strong>
+                    <span>
+                      {t("Capacity")}
+                    </span>
                   </div>
 
                 </div>
@@ -890,7 +1524,7 @@ function App() {
                   className="primary-button"
                   onClick={() => generateToken(centre)}
                 >
-                  Book Token
+                  {t("Book Token")}
                 </button>
 
               </div>
@@ -901,62 +1535,101 @@ function App() {
         </main>
       )}
 
-      {/* ================= TOKEN ================= */}
+      {/* =========================================
+          TOKEN
+      ========================================= */}
 
       {screen === "token" && loggedInRole === "farmer" && (
         <main className="container">
 
           <div className="token-card">
 
-            <div className="success-icon">✓</div>
+            <div className="success-icon">
+              ✓
+            </div>
 
-            <div className="eyebrow">TOKEN GENERATED</div>
+            <div className="eyebrow">
+              {t("TOKEN GENERATED")}
+            </div>
 
-            <h1>Your procurement token is ready</h1>
+            <h1>
+              {t("Your procurement token is ready")}
+            </h1>
 
             <div className="token-number">
-              {tokens[tokens.length - 1]?.id}
+
+              {farmerToken?.id || tokens[tokens.length - 1]?.id}
+
             </div>
 
             <div className="token-details">
 
               <div>
-                <span>Farmer</span>
-                <strong>{loginId || "Demo Farmer"}</strong>
+                <span>{t("Farmer")}</span>
+                <strong>
+                  {loginId || "Demo Farmer"}
+                </strong>
               </div>
 
               <div>
-                <span>Crop</span>
-                <strong>{crop}</strong>
+                <span>{t("Crop")}</span>
+                <strong>
+                  {crop}
+                </strong>
               </div>
 
               <div>
-                <span>Quantity</span>
-                <strong>{quantity} Quintal</strong>
+                <span>{t("Quantity")}</span>
+                <strong>
+                  {quantity} Quintal
+                </strong>
               </div>
 
               <div>
-                <span>Centre</span>
-                <strong>{selectedCentre?.name}</strong>
+                <span>{t("Centre")}</span>
+                <strong>
+                  {selectedCentre?.name}
+                </strong>
               </div>
 
               <div>
-                <span>Status</span>
-                <strong>Waiting</strong>
+                <span>{t("Status")}</span>
+                <strong>
+                  {t("Waiting")}
+                </strong>
               </div>
 
             </div>
 
+            {farmerToken && (
+              <div className="live-token-mini">
+                <strong>{t("Live update")}</strong>
+                <span>{t("Farmers ahead")}: {getQueueAhead(farmerToken)}</span>
+                <span>
+                  {t("Last updated")}: {new Date(
+                    farmerToken.updatedAt || farmerToken.createdAt
+                  ).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                </span>
+              </div>
+            )}
+
             <div className="queue-box">
-              <strong>⏱ Estimated waiting time</strong>
-              <p>{selectedCentre?.waitTime}</p>
+
+              <strong>
+                {t("⏱ Estimated waiting time")}
+              </strong>
+
+              <p>
+                {selectedCentre?.waitTime}
+              </p>
+
             </div>
 
             <button
               className="primary-button"
               onClick={() => setScreen("home")}
             >
-              Back to Farmer Dashboard
+              {t("Back to Farmer Dashboard")}
             </button>
 
           </div>
@@ -964,7 +1637,9 @@ function App() {
         </main>
       )}
 
-      {/* ================= MARKET ================= */}
+      {/* =========================================
+          MARKET / BUYER DEMAND FOR FARMER
+      ========================================= */}
 
       {screen === "market" && loggedInRole === "farmer" && (
         <main className="container">
@@ -973,17 +1648,27 @@ function App() {
             className="back-button"
             onClick={() => setScreen("compare")}
           >
-            ← Back
+            {t("← Back")}
           </button>
 
           <div className="welcome-card">
-            <div className="eyebrow">VERIFIED BUYER DEMAND</div>
 
-            <h1>Available buyers</h1>
+            <div>
 
-            <p>
-              These buyers have active crop requirements.
-            </p>
+              <div className="eyebrow">
+                {t("VERIFIED BUYER DEMAND")}
+              </div>
+
+              <h1>
+                {t("Available buyers")}
+              </h1>
+
+              <p>
+                {t("These buyers have active crop requirements.")}
+              </p>
+
+            </div>
+
           </div>
 
           <div className="buyer-list">
@@ -997,17 +1682,23 @@ function App() {
                 >
 
                   <div className="buyer-header">
+
                     <div>
-                      <h2>{demand.buyer}</h2>
+
+                      <h2>
+                        {demand.buyer}
+                      </h2>
 
                       <span className="verified">
-                        ✓ Verified Buyer
+                        {t("✓ Verified Buyer")}
                       </span>
+
                     </div>
 
                     <div className="buyer-rate">
                       ₹{demand.rate}/q
                     </div>
+
                   </div>
 
                   <div className="buyer-info">
@@ -1034,11 +1725,11 @@ function App() {
                     className="primary-button"
                     onClick={() =>
                       alert(
-                        `Connection request sent to ${demand.buyer}`
+                        t("Connection request sent to {buyer}").replace("{buyer}", demand.buyer)
                       )
                     }
                   >
-                    Connect with Buyer
+                    {t("Connect with Buyer")}
                   </button>
 
                 </div>
@@ -1049,7 +1740,9 @@ function App() {
         </main>
       )}
 
-      {/* ================= OFFICER ================= */}
+      {/* =========================================
+          PROCUREMENT OFFICER
+      ========================================= */}
 
       {screen === "officer" && loggedInRole === "officer" && (
         <main className="container dashboard">
@@ -1057,19 +1750,23 @@ function App() {
           <div className="dashboard-heading">
 
             <div>
+
               <div className="eyebrow">
-                PROCUREMENT MANAGEMENT
+                {t("PROCUREMENT MANAGEMENT")}
               </div>
 
-              <h1>Officer Dashboard</h1>
+              <h1>
+                {t("Officer Dashboard")}
+              </h1>
 
               <p>
-                Manage procurement centre token queue.
+                {t("Manage procurement centre token queue.")}
               </p>
+
             </div>
 
             <span className="live-badge">
-              ● LIVE
+              {t("● LIVE")}
             </span>
 
           </div>
@@ -1077,14 +1774,27 @@ function App() {
           <div className="dashboard-stats">
 
             <div className="stat-card">
-              <span>Waiting</span>
+
+              <span>
+                {t("Waiting")}
+              </span>
+
               <strong>
-                {tokens.filter((t) => t.status === "Waiting").length}
+                {
+                  tokens.filter(
+                    (t) => t.status === "Waiting"
+                  ).length
+                }
               </strong>
+
             </div>
 
             <div className="stat-card">
-              <span>Processing</span>
+
+              <span>
+                {t("Processing")}
+              </span>
+
               <strong>
                 {
                   tokens.filter(
@@ -1092,10 +1802,15 @@ function App() {
                   ).length
                 }
               </strong>
+
             </div>
 
             <div className="stat-card">
-              <span>Completed</span>
+
+              <span>
+                {t("Completed")}
+              </span>
+
               <strong>
                 {
                   tokens.filter(
@@ -1103,11 +1818,19 @@ function App() {
                   ).length
                 }
               </strong>
+
             </div>
 
             <div className="stat-card">
-              <span>Centre Capacity</span>
-              <strong>72%</strong>
+
+              <span>
+                {t("Centre Capacity")}
+              </span>
+
+              <strong>
+                72%
+              </strong>
+
             </div>
 
           </div>
@@ -1117,17 +1840,24 @@ function App() {
             <div className="section-header">
 
               <div>
-                <h2>🎫 Token Queue</h2>
-                <p>Rajajipuram Procurement Centre</p>
+
+                <h2>
+                  {t("🎫 Token Queue")}
+                </h2>
+
+                <p>
+                  Rajajipuram Procurement Centre
+                </p>
+
               </div>
 
               <button
                 className="small-button"
                 onClick={() =>
-                  alert("Queue refreshed")
+                  alert(t("Queue refreshed"))
                 }
               >
-                Refresh
+                {t("Refresh")}
               </button>
 
             </div>
@@ -1137,14 +1867,16 @@ function App() {
               <table>
 
                 <thead>
+
                   <tr>
-                    <th>Token</th>
-                    <th>Farmer</th>
-                    <th>Crop</th>
-                    <th>Quantity</th>
-                    <th>Status</th>
-                    <th>Action</th>
+                    <th>{t("Token")}</th>
+                    <th>{t("Farmer")}</th>
+                    <th>{t("Crop")}</th>
+                    <th>{t("Quantity")}</th>
+                    <th>{t("Status")}</th>
+                    <th>{t("Action")}</th>
                   </tr>
+
                 </thead>
 
                 <tbody>
@@ -1153,19 +1885,31 @@ function App() {
                     <tr key={token.id}>
 
                       <td>
-                        <strong>{token.id}</strong>
+                        <strong>
+                          {token.id}
+                        </strong>
                       </td>
 
-                      <td>{token.farmer}</td>
-
-                      <td>{token.crop}</td>
-
-                      <td>{token.quantity} q</td>
+                      <td>
+                        {token.farmer}
+                      </td>
 
                       <td>
-                        <span className="table-status">
-                          {token.status}
+                        {token.crop}
+                      </td>
+
+                      <td>
+                        {token.quantity} q
+                      </td>
+
+                      <td>
+
+                        <span
+                          className={`table-status ${token.status.toLowerCase()}`}
+                        >
+                          {t(token.status)}
                         </span>
+
                       </td>
 
                       <td>
@@ -1177,9 +1921,7 @@ function App() {
                               updateTokenStatus(token.id)
                             }
                           >
-                            {token.status === "Waiting"
-                              ? "Start"
-                              : "Complete"}
+                            {t(getNextOfficerAction(token.status))}
                           </button>
                         )}
 
@@ -1199,33 +1941,51 @@ function App() {
           <div className="dashboard-card">
 
             <div className="section-header">
+
               <div>
-                <h2>📊 Centre Operations</h2>
+                <h2>
+                  {t("📊 Centre Operations")}
+                </h2>
               </div>
+
             </div>
 
             <div className="progress-list">
 
               <div className="progress-item">
+
                 <div>
-                  <span>Daily Capacity</span>
-                  <strong>72%</strong>
+                  <span>
+                    {t("Daily Capacity")}
+                  </span>
+
+                  <strong>
+                    72%
+                  </strong>
                 </div>
 
                 <div className="progress">
                   <div style={{ width: "72%" }}></div>
                 </div>
+
               </div>
 
               <div className="progress-item">
+
                 <div>
-                  <span>Queue Load</span>
-                  <strong>38%</strong>
+                  <span>
+                    {t("Queue Load")}
+                  </span>
+
+                  <strong>
+                    38%
+                  </strong>
                 </div>
 
                 <div className="progress">
                   <div style={{ width: "38%" }}></div>
                 </div>
+
               </div>
 
             </div>
@@ -1235,7 +1995,9 @@ function App() {
         </main>
       )}
 
-      {/* ================= BUYER ================= */}
+      {/* =========================================
+          BUYER DASHBOARD
+      ========================================= */}
 
       {screen === "buyer" && loggedInRole === "buyer" && (
         <main className="container dashboard">
@@ -1243,19 +2005,23 @@ function App() {
           <div className="dashboard-heading">
 
             <div>
+
               <div className="eyebrow">
-                VERIFIED BUYER
+                {t("VERIFIED BUYER")}
               </div>
 
-              <h1>Buyer Dashboard</h1>
+              <h1>
+                {t("Buyer Dashboard")}
+              </h1>
 
               <p>
-                Create demand and connect with farmers.
+                {t("Create demand and connect with farmers.")}
               </p>
+
             </div>
 
             <span className="live-badge">
-              ✓ VERIFIED
+              {t("✓ VERIFIED")}
             </span>
 
           </div>
@@ -1263,7 +2029,11 @@ function App() {
           <div className="dashboard-stats">
 
             <div className="stat-card">
-              <span>Active Demands</span>
+
+              <span>
+                {t("Active Demands")}
+              </span>
+
               <strong>
                 {
                   demands.filter(
@@ -1271,22 +2041,35 @@ function App() {
                   ).length
                 }
               </strong>
+
             </div>
 
             <div className="stat-card">
-              <span>Total Required</span>
+
+              <span>
+                {t("Total Required")}
+              </span>
+
               <strong>
                 {demands
-                  .filter((d) => d.status === "Active")
+                  .filter(
+                    (d) => d.status === "Active"
+                  )
                   .reduce(
                     (sum, d) => sum + d.quantity,
                     0
-                  )} q
+                  )}{" "}
+                q
               </strong>
+
             </div>
 
             <div className="stat-card">
-              <span>Avg. Rate</span>
+
+              <span>
+                {t("Avg. Rate")}
+              </span>
+
               <strong>
                 ₹
                 {demands.length
@@ -1298,6 +2081,7 @@ function App() {
                     )
                   : 0}
               </strong>
+
             </div>
 
           </div>
@@ -1305,71 +2089,77 @@ function App() {
           <div className="dashboard-card">
 
             <div className="section-header">
+
               <div>
-                <h2>➕ Create New Demand</h2>
+
+                <h2>
+                  {t("➕ Create New Demand")}
+                </h2>
+
                 <p>
-                  Tell farmers what crop you need.
+                  {t("Tell farmers what crop you need.")}
                 </p>
+
               </div>
+
             </div>
 
             <div className="form-grid">
 
-              <div className="login-field">
-                <label>Crop</label>
-
-                <select
-                  value={buyerCrop}
-                  onChange={(e) =>
-                    setBuyerCrop(e.target.value)
-                  }
-                >
-                  <option value="">Select crop</option>
-                  <option value="Wheat">Wheat</option>
-                  <option value="Rice">Rice</option>
-                  <option value="Maize">Maize</option>
-                  <option value="Mustard">Mustard</option>
-                  <option value="Potato">Potato</option>
-                </select>
-              </div>
+              <CropCards
+                value={buyerCrop}
+                onChange={setBuyerCrop}
+              />
 
               <div className="login-field">
-                <label>Required Quantity (Quintal)</label>
+
+                <label>
+                  {t("Required Quantity (Quintal)")}
+                </label>
 
                 <input
                   type="number"
-                  placeholder="Example: 100"
+                  placeholder={t("Example: 100")}
                   value={buyerQuantity}
                   onChange={(e) =>
                     setBuyerQuantity(e.target.value)
                   }
                 />
+
               </div>
 
               <div className="login-field">
-                <label>Offered Rate / Quintal</label>
+
+                <label>
+                  {t("Offered Rate / Quintal")}
+                </label>
 
                 <input
                   type="number"
-                  placeholder="Example: 2700"
+                  placeholder={t("Example: 2700")}
                   value={buyerRate}
                   onChange={(e) =>
                     setBuyerRate(e.target.value)
                   }
                 />
+
               </div>
 
               <div className="login-field">
-                <label>Location</label>
+
+                <label>
+                  {t("Location")}
+                </label>
 
                 <input
                   type="text"
-                  placeholder="Example: Lucknow"
+                  placeholder={t("Example: Lucknow")}
                   value={buyerLocation}
                   onChange={(e) =>
                     setBuyerLocation(e.target.value)
                   }
                 />
+
               </div>
 
             </div>
@@ -1378,7 +2168,7 @@ function App() {
               className="primary-button"
               onClick={createDemand}
             >
-              Publish Demand
+              {t("Publish Demand")}
             </button>
 
           </div>
@@ -1386,18 +2176,27 @@ function App() {
           <div className="dashboard-card">
 
             <div className="section-header">
+
               <div>
-                <h2>📋 Active Demands</h2>
+
+                <h2>
+                  {t("📋 Active Demands")}
+                </h2>
+
                 <p>
-                  Your current crop requirements.
+                  {t("Your current crop requirements.")}
                 </p>
+
               </div>
+
             </div>
 
             <div className="demand-list">
 
               {demands
-                .filter((d) => d.status === "Active")
+                .filter(
+                  (d) => d.status === "Active"
+                )
                 .map((demand) => (
                   <div
                     className="demand-row"
@@ -1405,18 +2204,24 @@ function App() {
                   >
 
                     <div>
-                      <strong>{demand.crop}</strong>
+
+                      <strong>
+                        {demand.crop}
+                      </strong>
 
                       <span>
                         {demand.quantity} q • ₹
                         {demand.rate}/q
                       </span>
+
                     </div>
 
                     <div>
+
                       <span>
                         📍 {demand.location}
                       </span>
+
                     </div>
 
                     <button
@@ -1425,7 +2230,7 @@ function App() {
                         removeDemand(demand.id)
                       }
                     >
-                      Remove
+                      {t("Remove")}
                     </button>
 
                   </div>
@@ -1438,7 +2243,9 @@ function App() {
         </main>
       )}
 
-      {/* ================= ADMIN ================= */}
+      {/* =========================================
+          ADMIN DASHBOARD
+      ========================================= */}
 
       {screen === "admin" && loggedInRole === "admin" && (
         <main className="container dashboard">
@@ -1446,19 +2253,23 @@ function App() {
           <div className="dashboard-heading">
 
             <div>
+
               <div className="eyebrow">
-                PLATFORM ADMINISTRATION
+                {t("PLATFORM ADMINISTRATION")}
               </div>
 
-              <h1>Admin Dashboard</h1>
+              <h1>
+                {t("Admin Dashboard")}
+              </h1>
 
               <p>
-                Monitor Kisan Setu users and operations.
+                {t("Monitor Kisan Setu users and operations.")}
               </p>
+
             </div>
 
             <span className="live-badge">
-              ● SYSTEM ONLINE
+              {t("● SYSTEM ONLINE")}
             </span>
 
           </div>
@@ -1466,23 +2277,51 @@ function App() {
           <div className="dashboard-stats">
 
             <div className="stat-card">
-              <span>Registered Farmers</span>
-              <strong>1,248</strong>
+
+              <span>
+                {t("Registered Farmers")}
+              </span>
+
+              <strong>
+                1,248
+              </strong>
+
             </div>
 
             <div className="stat-card">
-              <span>Verified Buyers</span>
-              <strong>86</strong>
+
+              <span>
+                {t("Verified Buyers")}
+              </span>
+
+              <strong>
+                86
+              </strong>
+
             </div>
 
             <div className="stat-card">
-              <span>Procurement Centres</span>
-              <strong>32</strong>
+
+              <span>
+                {t("Procurement Centres")}
+              </span>
+
+              <strong>
+                32
+              </strong>
+
             </div>
 
             <div className="stat-card">
-              <span>Pending Verification</span>
-              <strong>7</strong>
+
+              <span>
+                {t("Pending Verification")}
+              </span>
+
+              <strong>
+                7
+              </strong>
+
             </div>
 
           </div>
@@ -1490,31 +2329,83 @@ function App() {
           <div className="admin-grid">
 
             <div className="admin-mini-card">
-              <span>🌾</span>
-              <h3>Farmers</h3>
-              <strong>1,248</strong>
-              <p>Registered users</p>
+
+              <span>
+                🌾
+              </span>
+
+              <h3>
+                {t("Farmers")}
+              </h3>
+
+              <strong>
+                1,248
+              </strong>
+
+              <p>
+                {t("Registered users")}
+              </p>
+
             </div>
 
             <div className="admin-mini-card">
-              <span>🏢</span>
-              <h3>Buyers</h3>
-              <strong>86</strong>
-              <p>Verified businesses</p>
+
+              <span>
+                🏢
+              </span>
+
+              <h3>
+                {t("Buyers")}
+              </h3>
+
+              <strong>
+                86
+              </strong>
+
+              <p>
+                {t("Verified businesses")}
+              </p>
+
             </div>
 
             <div className="admin-mini-card">
-              <span>🏛️</span>
-              <h3>Centres</h3>
-              <strong>32</strong>
-              <p>Active procurement centres</p>
+
+              <span>
+                🏛️
+              </span>
+
+              <h3>
+                {t("Centres")}
+              </h3>
+
+              <strong>
+                32
+              </strong>
+
+              <p>
+                {t("Active procurement centres")}
+              </p>
+
             </div>
 
             <div className="admin-mini-card">
-              <span>🎫</span>
-              <h3>Tokens Today</h3>
-              <strong>384</strong>
-              <p>Generated today</p>
+
+              <span>
+                🎫
+              </span>
+
+              <h3>
+                {t("Tokens Today")}
+              </h3>
+
+              <strong>
+                384
+              </strong>
+
+              <p>
+                {t("Generated today")}
+              </p>
+
             </div>
 
           </div>
@@ -1522,10 +2413,19 @@ function App() {
           <div className="dashboard-card">
 
             <div className="section-header">
+
               <div>
-                <h2>🔎 Buyer Verification</h2>
-                <p>Pending business verification requests.</p>
+
+                <h2>
+                  {t("🔎 Buyer Verification")}
+                </h2>
+
+                <p>
+                  {t("Pending business verification requests.")}
+                </p>
+
               </div>
+
             </div>
 
             <div className="verification-list">
@@ -1533,15 +2433,19 @@ function App() {
               <div className="verification-row">
 
                 <div>
-                  <strong>Agro Bharat Pvt Ltd</strong>
+
+                  <strong>
+                    Agro Bharat Pvt Ltd
+                  </strong>
 
                   <span>
                     GST: 09ABCDE1234F1Z5
                   </span>
+
                 </div>
 
                 <span className="pending">
-                  Pending
+                  {t("Pending")}
                 </span>
 
                 <button
@@ -1552,7 +2456,7 @@ function App() {
                     )
                   }
                 >
-                  Review
+                  {t("Review")}
                 </button>
 
               </div>
@@ -1560,15 +2464,19 @@ function App() {
               <div className="verification-row">
 
                 <div>
-                  <strong>Lucknow Grain Traders</strong>
+
+                  <strong>
+                    Lucknow Grain Traders
+                  </strong>
 
                   <span>
                     GST: 09XYZAB5678K1Z2
                   </span>
+
                 </div>
 
                 <span className="pending">
-                  Pending
+                  {t("Pending")}
                 </span>
 
                 <button
@@ -1579,7 +2487,7 @@ function App() {
                     )
                   }
                 >
-                  Review
+                  {t("Review")}
                 </button>
 
               </div>
@@ -1591,44 +2499,93 @@ function App() {
           <div className="dashboard-card">
 
             <div className="section-header">
+
               <div>
-                <h2>📈 Platform Overview</h2>
+                <h2>
+                  {t("📈 Platform Overview")}
+                </h2>
               </div>
+
             </div>
 
             <div className="progress-list">
 
               <div className="progress-item">
+
                 <div>
-                  <span>Farmer Registration</span>
-                  <strong>82%</strong>
+
+                  <span>
+                    {t("Farmer Registration")}
+                  </span>
+
+                  <strong>
+                    82%
+                  </strong>
+
                 </div>
 
                 <div className="progress">
-                  <div style={{ width: "82%" }}></div>
+
+                  <div
+                    style={{
+                      width: "82%",
+                    }}
+                  ></div>
+
                 </div>
+
               </div>
 
               <div className="progress-item">
+
                 <div>
-                  <span>Buyer Verification</span>
-                  <strong>64%</strong>
+
+                  <span>
+                    {t("Buyer Verification")}
+                  </span>
+
+                  <strong>
+                    64%
+                  </strong>
+
                 </div>
 
                 <div className="progress">
-                  <div style={{ width: "64%" }}></div>
+
+                  <div
+                    style={{
+                      width: "64%",
+                    }}
+                  ></div>
+
                 </div>
+
               </div>
 
               <div className="progress-item">
+
                 <div>
-                  <span>Centre Digitisation</span>
-                  <strong>91%</strong>
+
+                  <span>
+                    {t("Centre Digitisation")}
+                  </span>
+
+                  <strong>
+                    91%
+                  </strong>
+
                 </div>
 
                 <div className="progress">
-                  <div style={{ width: "91%" }}></div>
+
+                  <div
+                    style={{
+                      width: "91%",
+                    }}
+                  ></div>
+
                 </div>
+
               </div>
 
             </div>
@@ -1638,12 +2595,16 @@ function App() {
         </main>
       )}
 
-      {/* ================= FOOTER ================= */}
+      {/* =========================================
+          FOOTER
+      ========================================= */}
 
       <footer>
+
         <p>
-          © 2026 Kisan Setu • Smart Agriculture Procurement Platform
+          {t("© 2026 Kisan Setu • Smart Agriculture Procurement Platform")}
         </p>
+
       </footer>
 
     </div>
